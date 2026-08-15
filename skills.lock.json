@@ -1,0 +1,28 @@
+{
+  "schema": "eng-brain.skills.lock/v1",
+  "version": "2.0.0",
+  "files": {
+    "lib/bin/concepts.py": "f575fa74cb36b704d84c85edb65acd82d14329b2d2d4297f994167f554d72617",
+    "lib/bin/gate.py": "ce191c808195a282ef29d3086b1961a105016c431367595d03701353afa568c9",
+    "lib/bin/owns.py": "da2fe89656a314254966e388e5453d6236d01db3b04872a5d5aa1230ed21e022",
+    "lib/bin/state.py": "04905c3baf670ccbd105d8ecc82819adcb6925cb2cd4d7ff538477dfbb62caa7",
+    "lib/bin/tractable.py": "ed7561a36a57fb9088b594c44c5db5cce88479ec559b37a1507e6b18fb92a97b",
+    "lib/BROWNFIELD.md": "ecb4ad83c9dfa044e65d9f0fbac25887f664b7f5e40f9787e8220f374cfd6f8b",
+    "lib/CONVENTIONS.md": "cc144554e68279490543016b3bdfccf775c1d31b83ccc70f9dca884c2d4cd878",
+    "lib/GREENFIELD.md": "67df849c67c5ebdea9c8470c1cc158602eff8545ed2f3df2d4c292fa4a62500a",
+    "lib/setup.sh": "5e413db6b94028bbd9f57017e2596d482e41c0e66f5f33a7e4cc1ce08a27f426",
+    "skills/arch/SKILL.md": "825ead1798465e689ba465fdba5b14546acebbc778862fcb13f1bb3e061cfd9d",
+    "skills/before-pr/SKILL.md": "6551715136e7abda87d68e233e66dc7a10974394366bf55c9768df3f96bd90a5",
+    "skills/brain-sync/SKILL.md": "1a2c0f972a1fe2b08710f85bbd62d8570b99b314e3230c9b8adb66b6a2ee0bd7",
+    "skills/canary/SKILL.md": "0a2b65e56c64573ad4be1404fbf91ceb1db5ca0923a7b7905491b5105a4db0d6",
+    "skills/change/SKILL.md": "5bc361a7a13d87ac06750132e5060bb4f37a9ab05395d09a24db81bb65c4762d",
+    "skills/contract/SKILL.md": "ced0c2283bf09fc2ff72401e3bfafa7d2cf7da6aaab13e4c74cfb6c10d3ba981",
+    "skills/fleet/SKILL.md": "4fd465dbae50258ef2ed3554bec3c0659aac1305c337db34ddaba3a77d81e42d",
+    "skills/grill-me/SKILL.md": "f7ce857fffdbaff883a3aed97176637b4b25790b7cd098a13dc6a4978c64cf60",
+    "skills/impeccable/SKILL.md": "a3cbf223452bbe08c1bb4bf9464312aec09f9469f1cd432558755aeabfe965d8",
+    "skills/pr/SKILL.md": "bb71798d7d6e1cbd38bb24531e64ec5a4b1e3e6fa31c688874889c07a19906e6",
+    "skills/sdlc/SKILL.md": "694502fb396a8fb8d931babfe9a1eb3a7298492b2d6519f71cff6e43b044c735",
+    "skills/slice/SKILL.md": "562ae855fb1bce22c5c240ca3484b72eedca8464d5403b8757d5e7bf09592b38",
+    "skills/story/SKILL.md": "db5eabf3a2ab5c3ee2498e080708405c442923e76fd6b5b770b03ae47bfee5e0"
+  }
+}
