@@ -41,6 +41,11 @@ LADDER = [
     # dropped. That is the whole point of optional-but-recorded here.
     ("pentest",   True,  "PENTEST.md"),
     ("pr",        False, "PR.md"),
+    # deploy sits AFTER pr because a human merges in between. This stage detects
+    # that merge; it never performs it. Optional because a library change may
+    # have nothing to deploy — but skipping still needs a reason on the record.
+    ("deploy",    True,  "DEPLOY.md"),
+    # canary measures the delta a deploy caused, so it follows deploy.
     ("canary",    True,  "CANARY.md"),
 ]
 NAMES = [n for n, _, _ in LADDER]

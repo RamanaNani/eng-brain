@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-6b4fbb)](https://claude.com/claude-code)
-[![Skills](https://img.shields.io/badge/skills-15-green.svg)](skills/)
+[![Skills](https://img.shields.io/badge/skills-17-green.svg)](skills/)
 
 One feature goes in at `/sdlc` and comes out as reviewed pull requests — through story,
 architecture, contracts, slicing, parallel implementation, and gating. Every architectural
@@ -12,7 +12,7 @@ decision is written back to a knowledge brain, so the *next* feature inherits wh
 one learned instead of rediscovering it.
 
 ```
-/story → /arch → /contract? → /slice → /fleet → /before-pr → /review → /pentest? → /pr → /canary?
+/story → /arch → /contract? → /slice → /fleet → /before-pr → /review → /pentest? → /pr → /deploy? → /canary?
 ```
 
 ---
@@ -66,12 +66,13 @@ than a directory of markdown nobody opens again.
 
 ## What you get
 
-**15 skills.** The ten ladder stages, plus:
+**17 skills.** The eleven ladder stages, plus:
 
 | Skill | What it's for |
 |---|---|
 | `/sdlc` | the spine — holds state, dispatches stages, enforces gates |
 | `/impeccable` | review rubric: correctness, honesty of evidence, blast radius, reversibility |
+| `/rollback` | incident runbook — stop the harm, then diagnose. Not a ladder rung; you invoke it when a deploy is causing damage. |
 | `/grill-me` | adversarial interview to stress-test a design before you build it |
 | `/brain-sync` | manual brain sync + health delta |
 | `/change` | change requests against an existing system |
@@ -107,7 +108,13 @@ being run out of order — which is the problem the spine exists to fix.
 | `review` | `REVIEW.md` | no scope drift either way, `/impeccable` rubric clean |
 | `pentest` *(opt)* | `PENTEST.md` | no unresolved high/critical findings |
 | `pr` | `PR.md` | PRs opened — **never merged** |
+| `deploy` *(opt)* | `DEPLOY.md` | rollback path recorded **and dry-run** before release |
 | `canary` *(opt)* | `CANARY.md` | baseline recorded, delta non-regressive |
+
+`deploy` sits after `pr` because **a human merges in between**. It detects that merge; it
+never performs it. Its gate is the rollback path: `/deploy` refuses to ship until a way back
+has been written down *and* dry-run with `git revert --no-commit`, because the moment you
+need a rollback plan is the moment you are least able to think one up.
 
 The three gates before `pr` are separate on purpose, and ordered cheapest-first:
 
@@ -136,7 +143,7 @@ position travels with its branch and survives a lost session.
 $ /sdlc where is offline-sync
 
 offline-sync  ·  slice → fleet
-  ✓ story  ✓ arch  – contract (single repo)  ✓ slice  · fleet  · before-pr  · review  · pentest  · pr  · canary
+  ✓ story  ✓ arch  – contract (single repo)  ✓ slice  · fleet  · before-pr  · review  · pentest  · pr  · deploy  · canary
 ```
 
 ---
@@ -190,7 +197,7 @@ cd eng-brain
 > skill twice and makes resolution ambiguous. Switching from clone to plugin? Remove the
 > projected copies first:
 > ```bash
-> for s in sdlc story arch contract slice fleet before-pr review pentest pr canary \
+> for s in sdlc story arch contract slice fleet before-pr review pentest pr deploy canary rollback \
 >          impeccable grill-me brain-sync change _eng-brain; do
 >   rm -rf ~/.claude/skills/$s
 > done
@@ -257,7 +264,7 @@ any edit to that file.
 /plugin marketplace remove eng-brain
 
 # clone
-for s in sdlc story arch contract slice fleet before-pr review pentest pr canary \
+for s in sdlc story arch contract slice fleet before-pr review pentest pr deploy canary rollback \
          impeccable grill-me brain-sync change _eng-brain; do
   rm -rf ~/.claude/skills/$s
 done

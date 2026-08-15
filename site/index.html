@@ -98,7 +98,7 @@
     <p class="tag">A software development lifecycle for AI coding agents — with gates that
        actually hold.</p>
     <div class="flow">
-      /story → /arch → /contract? → /slice → /fleet → /before-pr → <b>/review</b> → /pentest? → /pr → /canary?
+      /story → /arch → /contract? → /slice → /fleet → /before-pr → <b>/review</b> → /pentest? → /pr → /deploy? → /canary?
     </div>
     <div class="cta">
       <a class="btn primary" href="#quickstart">Get started</a>
@@ -173,6 +173,7 @@ tell they are being run out of order — which is the problem the spine exists t
     <tr><td><code>review</code></td><td><code>REVIEW.md</code></td><td>no scope drift either way, <code>/impeccable</code> rubric clean</td></tr>
     <tr><td><code>pentest</code> <em>(opt)</em></td><td><code>PENTEST.md</code></td><td>no unresolved high/critical findings</td></tr>
     <tr><td><code>pr</code></td><td><code>PR.md</code></td><td>PRs opened — <strong>never merged</strong></td></tr>
+    <tr><td><code>deploy</code> <em>(opt)</em></td><td><code>DEPLOY.md</code></td><td>rollback path recorded <strong>and dry-run</strong> before release</td></tr>
     <tr><td><code>canary</code> <em>(opt)</em></td><td><code>CANARY.md</code></td><td>baseline recorded, delta non-regressive</td></tr>
   </tbody>
 </table>
@@ -187,7 +188,7 @@ applicable” is a decision, and decisions are what this system exists to keep.<
   <span class="ok">✓</span> story &nbsp;<span class="ok">✓</span> arch &nbsp;<span class="sk">–</span> contract (single repo)
   &nbsp;<span class="ok">✓</span> slice &nbsp;<span class="pend">·</span> fleet
   &nbsp;<span class="pend">·</span> before-pr &nbsp;<span class="pend">·</span> review
-  &nbsp;<span class="pend">·</span> pr &nbsp;<span class="pend">·</span> canary
+  &nbsp;<span class="pend">·</span> pr &nbsp;<span class="pend">·</span> deploy &nbsp;<span class="pend">·</span> canary
 </div>
 <p>State lives in the <em>target</em> repo at <code>docs/arch/&lt;feature&gt;/STATE.json</code>,
 so a feature’s position travels with its branch and survives a lost session.</p>

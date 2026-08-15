@@ -18,7 +18,7 @@ allowed-tools:
 # /canary — measured, not asserted
 
 Stage 7 of the ladder (see `skills/sdlc/SKILL.md`), optional but recorded. Position:
-`review → pr → **canary**`.
+`deploy → **canary**`.
 
 Optional means "may be skipped with a reason", not "may be ignored". If a feature has no
 production traffic to canary, skip it explicitly:

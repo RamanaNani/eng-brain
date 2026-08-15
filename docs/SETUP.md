@@ -165,7 +165,7 @@ root is what makes that work. Skip to Step 5.
 ./install.sh --check    # verify the installed copy matches this repo
 ```
 
-This installs 15 skills plus the shared `_eng-brain` library. If you installed via the plugin marketplace instead, skip this step entirely — Claude Code manages the copy.
+This installs 17 skills plus the shared `_eng-brain` library. If you installed via the plugin marketplace instead, skip this step entirely — Claude Code manages the copy.
 
 **Edit this repo, never `~/.claude/skills/` directly.** The installed copy is a
 projection; `--check` exists to catch the case where someone edited the projection and is
