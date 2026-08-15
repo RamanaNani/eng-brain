@@ -30,7 +30,7 @@ rather than before it — mechanical checks are cheap and review attention is no
 careful read on a branch with a red suite wastes the expensive resource to find what the
 cheap one would have caught.
 
-Read `skills/_eng-brain/CONVENTIONS.md` first.
+Read `$ENG_BRAIN/CONVENTIONS.md` first.
 
 ## Phase 0 — Preamble
 
@@ -56,7 +56,7 @@ against the diff. Drift runs two ways and both matter:
 belongs to no slice is either scope creep or a missed `contract` — both are findings.
 
 ```bash
-python3 "$ENG_BRAIN/bin/owns.py" "$ARCH_DIR" --diff-base "$DIFF_BASE"
+python3 "$ENG_BRAIN/bin/owns.py" "$ARCH_DIR/slices.json" "$REPO_ROOT" || exit 1
 ```
 
 **Asked for but not built.** Walk `STORY.md`'s acceptance criteria one at a time and locate

@@ -25,7 +25,7 @@ allowed-tools:
 Stage 2 of 11. `/arch` decides *what to build and why*. `/slice` splits it.
 `/fleet` builds it.
 
-**Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` before doing anything else.**
+**Read `$ENG_BRAIN/CONVENTIONS.md` before doing anything else.**
 It defines the page types, link types, read/write protocol, and the current known
 state of the brain. Everything below assumes it.
 

@@ -24,10 +24,10 @@ Optional means "may be skipped with a reason", not "may be ignored". If a featur
 production traffic to canary, skip it explicitly:
 
 ```bash
-python3 "$ENG_BRAIN/lib/bin/state.py" skip "$ARCH_DIR" --stage canary --why "no prod traffic yet"
+python3 "$ENG_BRAIN/bin/state.py" skip "$ARCH_DIR" --stage canary --why "no prod traffic yet"
 ```
 
-Read `lib/CONVENTIONS.md` first.
+Read `$ENG_BRAIN/CONVENTIONS.md` first.
 
 ## The ordering problem
 
@@ -46,7 +46,7 @@ Say so and stop — a fabricated baseline makes every later number meaningless.
 
 ## Phase 0 — Preamble
 
-`lib/CONVENTIONS.md` §7, then confirm what "regression" means for this feature. Pull it
+`$ENG_BRAIN/CONVENTIONS.md` §7, then confirm what "regression" means for this feature. Pull it
 from `STORY.md`'s acceptance criteria rather than choosing metrics here; metrics chosen
 after the fact tend to be the ones that look good.
 
@@ -93,7 +93,7 @@ underpowered measurement is the failure this stage is meant to catch, not commit
 ## Phase 3 — Record
 
 ```bash
-python3 "$ENG_BRAIN/lib/bin/state.py" pass "$ARCH_DIR" --stage canary --artifact CANARY.md
+python3 "$ENG_BRAIN/bin/state.py" pass "$ARCH_DIR" --stage canary --artifact CANARY.md
 ```
 
 Capture to the brain per `CONVENTIONS.md` §5 and add a timeline entry — canary results are

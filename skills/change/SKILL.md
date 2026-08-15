@@ -31,7 +31,7 @@ half it is not a matter of opinion — it is mechanically discoverable. Callers
 exist. Tests exist. Numbers exist. A change that did not look them up is not
 scoped; it is a guess with a diff attached.
 
-**Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` first.**
+**Read `$ENG_BRAIN/CONVENTIONS.md` first.**
 
 ## The one inviolable rule
 
@@ -74,7 +74,7 @@ Never from memory, and never from the agent's summary of the code.
 rg -n --glob '!**/node_modules/**' -w "<function_or_symbol>" "$REPO_ROOT"
 
 # Every definition site of the shared types involved — the same gate /slice runs.
-python3 ~/.claude/skills/_eng-brain/bin/concepts.py "$MANIFEST" "$REPO_ROOT" [<other_repo>...]
+python3 "$ENG_BRAIN/bin/"concepts.py "$MANIFEST" "$REPO_ROOT" [<other_repo>...]
 
 # Every test that currently covers it. If this returns nothing, that is the finding.
 rg -l --glob '**/*{test,spec}*' -w "<function_or_symbol>" "$REPO_ROOT"

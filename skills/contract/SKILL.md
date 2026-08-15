@@ -28,7 +28,7 @@ This stage exists because the type checker stops at the repo boundary. Something
 has to take its place, and that something is a written contract plus a test on
 each side that fails when the other side drifts.
 
-**Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` first.**
+**Read `$ENG_BRAIN/CONVENTIONS.md` first.**
 
 ## When to invoke
 

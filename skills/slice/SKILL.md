@@ -25,7 +25,7 @@ allowed-tools:
 Stage 4 of 11. `/arch` decided what to build. `/slice` decides **who can work in
 parallel without stepping on each other**. `/fleet` executes it.
 
-**Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` first.**
+**Read `$ENG_BRAIN/CONVENTIONS.md` first.**
 
 ## When to invoke
 
@@ -104,27 +104,259 @@ point. Handle them one of two ways, never by hoping:
 1. Give one slice sole ownership and make the others depend on it, or
 2. Pull the shared edit into a **slice 00** that runs alone first.
 
-## Phase 1.5 — Tractability, and the cross-repo precondition
+## Phase 2 — Ownership validation (the part that must not be skipped)
 
-A slice can be perfectly cut and still be un-buildable, because the file it owns is
-too large for an agent to edit safely. Not hypothetical: a 5,339-line component burned
-two agent attempts on `data-analysis-ai-seam/N02` before the file, rather than the
-agent, was identified as the problem. Find that here, for free, instead of there, twice.
+Every slice declares `owns`: glob patterns it may write. Two slices whose globs can
+match the same file **will** produce a merge conflict in `/fleet`. Verify mechanically,
+do not eyeball it:
 
 ```bash
-python3 ~/.claude/skills/_eng-brain/bin/tractable.py "$MANIFEST" "$REPO_ROOT"
+cat > /tmp/check_owns.py <<'PY'
+import json, sys, glob, os, itertools
+from pathlib import Path
+manifest = json.load(open(sys.argv[1]))
+root = Path(sys.argv[2])
+os.chdir(root)
+resolved = {}
+for s in manifest["slices"]:
+    files = set()
+    for pat in s["owns"]:
+        files |= {os.path.normpath(p) for p in glob.glob(pat, recursive=True) if os.path.isfile(p)}
+    resolved[s["id"]] = files
+    print(f"  slice {s['id']} {s['name']}: {len(files)} existing files")
+bad = False
+for a, b in itertools.combinations(resolved, 2):
+    overlap = resolved[a] & resolved[b]
+    if overlap:
+        bad = True
+        print(f"COLLISION {a} <-> {b}: {sorted(overlap)[:8]}")
+for s in manifest["slices"]:
+    if not resolved[s["id"]]:
+        print(f"  note: slice {s['id']} matches no existing files (new-file slice — confirm intentional)")
+print("OWNERSHIP: FAIL" if bad else "OWNERSHIP: OK")
+sys.exit(1 if bad else 0)
+PY
+python3 /tmp/check_owns.py "$ARCH_DIR/slices.json" "$REPO_ROOT"
 ```
 
-Any file at or over 1500 lines fails the gate. Two legitimate ways forward:
+On `FAIL`, re-cut the slices. Do not proceed with a known collision and do not
+"just be careful in fleet" — parallel agents cannot be careful about each other.
 
-1. **Split the file first**, as its own slice 00 that runs alone.
-2. **Declare `"edit_strategy": "surgical"`** on the slice, and make the brief name the
-   exact functions, symbols, or line regions the agent may touch. Surgical means the
-   agent reads the whole file and edits three named places — never "refactor this
-   component". Pair it with serena for symbol-level edits.
+This check only catches collisions among files that **already exist**. For new files,
+compare the declared globs against each other by inspection too: two slices both
+owning `src/api/**` collide even on an empty directory.
 
-Files between 800 and 1500 lines warn. A warning is not a blocker, but the brief must
-name the regions to touch.
+## Phase 3 — Dependency DAG
 
-**Cross-repo precondition.** If the feature spans more than one repo,
-`docs/arch/<slug>/CONTRACTS.md` must already exist from `/contract`, and `slices.json`
+Set `depends_on` per slice. Then verify it is acyclic and compute the wave order:
+
+```bash
+python3 - "$ARCH_DIR/slices.json" <<'PY'
+import json, sys
+m = json.load(open(sys.argv[1]))
+dep = {s["id"]: set(s.get("depends_on", [])) for s in m["slices"]}
+unknown = {d for ds in dep.values() for d in ds} - set(dep)
+if unknown:
+    print("UNKNOWN DEP IDS:", unknown); sys.exit(1)
+waves, done = [], set()
+while len(done) < len(dep):
+    ready = [i for i, d in dep.items() if i not in done and d <= done]
+    if not ready:
+        print("CYCLE among:", sorted(set(dep) - done)); sys.exit(1)
+    waves.append(sorted(ready)); done |= set(ready)
+for i, w in enumerate(waves, 1):
+    print(f"wave {i}: {' '.join(w)}")
+print("DAG: OK")
+PY
+```
+
+Slices in the same wave run in parallel in `/fleet`. Keep wave 1 as wide as you can —
+that is where the wall-clock win is. Two hard caps on that:
+
+**Max 4 slices per wave.** The binding constraint is one human reading PRs, not agent
+count. If a wave comes out wider, split it. Add to the DAG script:
+`if len(wave) > 4: print(f"WAVE {i} TOO WIDE ({len(wave)}) — split it")`.
+
+**A slice that touches the database gets its own wave, alone.** `/fleet` isolates slices
+with git worktrees, and a worktree isolates *files*, not the database. Every parallel agent
+runs its tests against the same live Postgres. If one slice migrates while a sibling tests,
+the sibling is testing against a schema mutating underneath it, and the ownership gate
+cannot see it because a migration's blast radius is not a file glob. Any slice owning
+`supabase/migrations/**`, `*.sql`, or an ORM schema file is a wave of one.
+
+## Phase 3.5 — Assign a specialist to each slice
+
+Every slice gets three named agents: who **builds** it, who **reviews** it, who checks its
+**tests**. `/fleet` dispatches exactly these. Picking a generalist when a specialist exists
+is the most common waste in this pipeline — a `typescript-reviewer` catches things a
+general reviewer does not.
+
+Route on what the slice actually touches, not on the feature's overall topic:
+
+| Slice touches | build | review |
+|---|---|---|
+| React / Next.js UI | `voltagent-lang:react-specialist` | `ecc:react-reviewer` |
+| TypeScript / Node backend | `voltagent-lang:typescript-pro` | `ecc:typescript-reviewer` |
+| Python | `voltagent-lang:python-pro` | `ecc:python-reviewer` |
+| Go / Rust / Swift | `voltagent-lang:golang-pro` / `rust-engineer` / `swift-expert` | `ecc:go-reviewer` / `rust-reviewer` / `swift-reviewer` |
+| DB schema, migrations, SQL | `ruflo-migrations:migration-engineer` | `ecc:database-reviewer` |
+| API surface / contracts | `voltagent-core-dev:api-designer` | `ecc:typescript-reviewer` |
+| Auth, crypto, user input, secrets | `voltagent-core-dev:backend-developer` | **`ecc:security-reviewer`** |
+| Anything else | `software-developer` | `ecc:code-reviewer` |
+
+Test gate is `ecc:tdd-guide` by default; use `ecc:e2e-runner` for slices whose done-criteria
+are user-visible flows.
+
+Two overrides that matter more than the table:
+
+- **Any slice touching auth, payments, PII, or user input gets `ecc:security-reviewer`**,
+  regardless of language. Trust boundaries outrank idiom.
+- **A slice that is fixing a bug, not building a feature**, routes build to
+  `voltagent-qa-sec:debugger` (or the `investigate` skill for a gnarly one). Debugging and
+  greenfield implementation are different jobs and the agents are tuned differently — do
+  not send a `*-pro` implementer to chase a root cause.
+
+Check Phase 0.5's brain results before finalizing: if a past assignment underperformed on
+a similar slice, pick differently and note why.
+
+## Phase 4 — Write the briefs
+
+Each worktree agent sees **only its brief**. It cannot read the other slices, cannot
+ask a sibling a question, and cannot see the conversation you are having now. If it is
+not in the brief, it does not exist.
+
+`$ARCH_DIR/slices/NN-<name>.md`:
+
+```markdown
+# Slice NN: <name>
+
+## Goal
+One paragraph. What is true when this is done.
+
+## Owns (you may write ONLY these)
+- `path/glob/**`
+
+Touching anything outside this list is a bug. If you believe you must, stop and
+report it instead — another slice owns that file and is editing it right now.
+
+## Context
+The relevant excerpt of ARCHITECTURE.md — inlined, not linked. Include the ADR
+decisions that constrain this slice and the reason behind them.
+
+## Interfaces you must honor
+Exact signatures/schemas this slice must produce or consume. Copy them verbatim from
+ARCHITECTURE.md. Other slices are being built against these right now; changing one
+silently breaks them.
+
+## Depends on
+Slice IDs that land first, and what they give you.
+
+## Done when
+- [ ] <behavioral criterion, not "code written">
+- [ ] tests pass, including the edge cases below
+- [ ] docs updated
+
+## Edge cases to test
+Concrete list. Empty input, concurrent write, auth boundary, the failure the ADR
+called out. This is what /fleet's test gate checks against.
+
+Every row of the **Failure modes** table in ARCHITECTURE.md must land in exactly one
+slice's list here, quoted with its guaranteed behaviour so the test has something to
+assert. A row assigned to no slice is a mode nobody tests, because `/fleet`'s gate only
+checks what the brief lists. If a row genuinely belongs to no slice, put it in that
+slice's **Out of scope** with the reason.
+
+Do not check this off from memory. After writing every brief, run:
+
+```bash
+python3 "$ENG_BRAIN/bin/"gate.py modes "$ARCH_DIR" || {
+  echo "a failure mode reaches no brief — fix the briefs before the Phase 6 gate"; }
+```
+
+It parses the Failure-modes table and every brief's edge-case and out-of-scope sections,
+and names any row that reaches neither. This is the same mechanical discipline as
+`check_owns.py`, applied to the other thing that silently fails to propagate.
+
+## Out of scope
+Explicit. Prevents an agent from helpfully expanding into another slice's files.
+```
+
+Then write `$ARCH_DIR/slices.json`:
+
+```json
+{
+  "feature": "<feature-slug>",
+  "source_branch": "<the branch you were on — the PR target>",
+  "created": "<YYYY-MM-DD>",
+  "slices": [
+    {
+      "id": "01",
+      "name": "sync-schema",
+      "owns": ["db/migrations/**", "src/models/sync*.ts"],
+      "depends_on": [],
+      "brief": "slices/01-sync-schema.md",
+      "status": "ready",
+      "agents": {
+        "build":  "ruflo-migrations:migration-engineer",
+        "review": "ecc:database-reviewer",
+        "test":   "ecc:tdd-guide"
+      },
+      "kind": "feature"
+    }
+  ]
+}
+```
+
+`source_branch` must be the branch recorded in Phase 0 — every PR in `/fleet` targets it.
+
+## Phase 5 — Brain write-back
+
+Append the slice plan to the architecture page's timeline and tag it:
+
+Record the plan **and the style choices behind it** — the style is what Phase 0.5 reads
+next time. A timeline entry that only says "sliced into 4 tasks" teaches nothing.
+
+```bash
+gbrain timeline-add projects/$FEATURE_SLUG $(date +%F) \
+  "Sliced into 4 tasks, cut by layer (schema/api/ui). Waves: 2 parallel, then 03, then 04. \
+   Shared types pulled into slice 00 to avoid the collision that hit <past-feature>. \
+   Agents: 01 migration-engineer+database-reviewer, 02 typescript-pro+security-reviewer (auth path)."
+gbrain tag projects/$FEATURE_SLUG sliced
+```
+
+Write down, in the entry itself:
+- **how you cut** (by layer / context / entrypoint) and why
+- **slice count and wave shape**
+- **which specialists** you assigned and to what
+- **any collision you designed around**, naming the past feature it came from
+
+Individual slices are ephemeral work orders — they do not get their own brain pages.
+Their **outcomes** roll up into the architecture page's timeline in `/fleet`.
+
+This entry is the only durable record of how you work. `/arch` reads it for decisions;
+`/slice` Phase 0.5 reads it for style. Thin entries here are why `gbrain think` stays
+thin — the graph compounds only as well as what you write into it.
+
+## Phase 6 — Gate
+
+```
+Sliced: <feature> → 4 slices
+  wave 1 (parallel): 01-sync-schema, 02-conflict-resolver
+  wave 2:            03-api-layer  (needs 01)
+  wave 3:            04-ui         (needs 03)
+  ownership: OK (no collisions)   DAG: OK
+  briefs: docs/arch/<slug>/slices/
+
+Next: /fleet to run wave 1 in parallel worktrees.
+```
+
+Stop. The user reviews the cut before any worktree is created.
+
+## Failure modes
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `OWNERSHIP: FAIL` | two slices share a file | Re-cut, or give one slice sole ownership + a `depends_on` |
+| `CYCLE among:` | circular `depends_on` | Merge the cycle into one slice — it is not decomposable |
+| Agent goes outside `owns` | brief lacked the constraint | "Out of scope" section must be explicit |
+| Slices merge cleanly but the feature is broken | interfaces underspecified | Interfaces are the only cross-slice contract; make them exact |

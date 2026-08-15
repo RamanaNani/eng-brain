@@ -77,7 +77,7 @@ than a directory of markdown nobody opens again.
 | `/brain-sync` | manual brain sync + health delta |
 | `/change` | change requests against an existing system |
 
-**Four tools** under `skills/_eng-brain/bin/`:
+**Five tools** under `skills/_eng-brain/bin/`:
 
 | Tool | What it does |
 |---|---|
@@ -101,7 +101,7 @@ being run out of order — which is the problem the spine exists to fix.
 |---|---|---|
 | `story` | `STORY.md` | ≥1 acceptance criterion, ≥1 negative case, ≥1 non-goal |
 | `arch` | `ARCHITECTURE.md`, `ADR-*.md` | ≥2 candidates weighed, ≥1 ADR, contradictions surfaced |
-| `contract` *(opt)* | `contracts/` | required iff ≥2 slices share an interface |
+| `contract` *(opt)* | `contracts/` | required iff the feature spans ≥2 repos |
 | `slice` | `slices.json` | ownership disjoint, DAG acyclic, failure modes routed |
 | `fleet` | `FLEET.md` | every slice green, **runner output shown** |
 | `before-pr` | `GATE.md` | `gate.py` passes on every slice |
@@ -132,9 +132,6 @@ The three gates before `pr` are separate on purpose, and ordered cheapest-first:
 > state.py skip "$ARCH_DIR" --stage pentest --why "docs-only change, no attack surface"
 > ```
 > Silently dropping the security stage is precisely the outcome it exists to prevent.
-
-Optional stages must still be *recorded* as skipped, with a reason. "Not applicable" is a
-decision, and decisions are what this system exists to keep.
 
 State lives in the **target** repo at `docs/arch/<feature>/STATE.json`, so a feature's
 position travels with its branch and survives a lost session.
@@ -331,6 +328,13 @@ Before opening a PR: preflight green, `gate.py selfcheck` passing. New skills ne
 These skills were lost on 2026-08-15 when `~/.claude/skills/` was wiped, and recovered
 verbatim from gbrain transcript pages that happened to embed the original tool-call
 payloads. That worked, and it should never have been the plan. This repo is the plan.
+
+## Attribution
+
+The `pentest` skill is derived from [usestrix/strix](https://github.com/usestrix/strix)
+(Apache-2.0). Its methodology and playbooks are Strix's; the pipeline orchestration around
+them is ours. Strix's playbooks are fetched at runtime by `sync-upstream.sh` rather than
+vendored, so no Apache-2.0 code ships in this MIT repository.
 
 ## License
 

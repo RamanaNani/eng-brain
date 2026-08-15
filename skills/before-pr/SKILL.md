@@ -23,11 +23,11 @@ Everything upstream of here is recoverable. Once `/pr` runs, work is visible to 
 people and a bad slice costs someone else's attention. This is the last stage where being
 wrong is free, so it is deliberately the least forgiving one.
 
-Read `lib/CONVENTIONS.md` first.
+Read `$ENG_BRAIN/CONVENTIONS.md` first.
 
 ## What it checks
 
-Two things, both mechanical, both via `lib/bin/gate.py`:
+Two things, both mechanical, both via `$ENG_BRAIN/bin/gate.py`:
 
 1. **Failure-mode coverage** — every row in `ARCHITECTURE.md`'s `## Failure modes` table
    reaches some slice brief's `## Edge cases to test` or `## Out of scope`. A failure mode
@@ -42,10 +42,10 @@ it is circular.
 
 ## Phase 0 — Preamble
 
-`lib/CONVENTIONS.md` §7, then:
+`$ENG_BRAIN/CONVENTIONS.md` §7, then:
 
 ```bash
-GATE="$ENG_BRAIN/lib/bin/gate.py"
+GATE="$ENG_BRAIN/bin/gate.py"
 python3 "$GATE" selfcheck || { echo "gate.py is broken; fix it before trusting it"; exit 1; }
 ```
 
@@ -101,9 +101,9 @@ Verbatim means verbatim. A summary of runner output is an assertion again.
 ## Phase 4 — Record
 
 ```bash
-python3 "$ENG_BRAIN/lib/bin/state.py" pass "$ARCH_DIR" --stage before-pr --artifact GATE.md
+python3 "$ENG_BRAIN/bin/state.py" pass "$ARCH_DIR" --stage before-pr --artifact GATE.md
 # or
-python3 "$ENG_BRAIN/lib/bin/state.py" fail "$ARCH_DIR" --stage before-pr --why "<what failed>"
+python3 "$ENG_BRAIN/bin/state.py" fail "$ARCH_DIR" --stage before-pr --why "<what failed>"
 ```
 
 Then capture `GATE.md` to the brain per `CONVENTIONS.md` §5, with an edge in the same run.

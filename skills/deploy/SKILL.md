@@ -21,7 +21,7 @@ allowed-tools:
 Stage 10 of the ladder (see `skills/sdlc/SKILL.md`), optional but **recorded**.
 Position: `pr → **deploy** → canary?`.
 
-Read `skills/_eng-brain/CONVENTIONS.md` first.
+Read `$ENG_BRAIN/CONVENTIONS.md` first.
 
 ## This stage does not merge
 

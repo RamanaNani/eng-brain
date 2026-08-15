@@ -1,7 +1,7 @@
 ---
 name: fleet
 version: 1.0.0
-description: "Run sliced work across parallel git worktrees. One agent per slice, wave by wave, each gated on real tests and written docs, retried once on failure and never twice. Passing slices assemble onto an integration branch and it STOPS — no PR. /review reads the seam, then /pr publishes. Stage 5 of 11 in the ladder (story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary?)."
+description: "Run sliced work across parallel git worktrees. One agent per slice, wave by wave, each gated on real tests and written docs before it may push. Opens a PR per slice against your source branch and STOPS — you accept, then /fleet --accept merges and writes outcomes back to gbrain. Stage 5 of 11 in the ladder (story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary?)."
 triggers:
   - fleet
   - run the worktrees
@@ -26,24 +26,20 @@ allowed-tools:
 Stage 5 of 11. `/arch` decided. `/slice` divided. `/fleet` builds — in parallel,
 in isolated worktrees, and **it never merges**.
 
-**Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` first.**
+**Read `$ENG_BRAIN/CONVENTIONS.md` first.**
 
 ## The one inviolable rule
 
-`/fleet` never touches `$TARGET` and never opens a pull request.
+`/fleet` opens pull requests and stops. It does not merge. It does not enable
+auto-merge. It does not merge "because the gate passed". The user accepts, explicitly,
+and only then does `/fleet --accept` merge.
 
-Passing slices merge onto `integration/<feature>`, which is a scratch branch — that merge
-is bookkeeping, not a release, and it exists so the seam can be read in one place. Nothing
-reaches the branch you actually care about without a human reading the assembled diff first,
-and the PR is raised by `/review` as the record that the read happened.
-
-If you are ever unsure whether you are allowed to touch `$TARGET` or run `gh pr create`:
-you are not. That is `/review`'s job.
+If you are ever unsure whether you are allowed to merge: you are not.
 
 ## When to invoke
 
 After `/slice`, when the user says "fleet", "run the worktrees", "build the slices",
-"execute the plan". There is no accept subcommand — `/review` is the next step.
+"execute the plan". Use `/fleet --accept` after they have reviewed the PRs.
 
 ## Phase 0 — Preamble and preflight
 
@@ -62,7 +58,7 @@ TARGET=$(python3 -c "import json;print(json.load(open('$MANIFEST'))['source_bran
 git diff --quiet && git diff --cached --quiet || { echo "BLOCKED: uncommitted changes"; exit 1; }
 git rev-parse --verify "$TARGET" >/dev/null 2>&1 || { echo "BLOCKED: target branch $TARGET missing"; exit 1; }
 gh auth status >/dev/null 2>&1 || { echo "BLOCKED: gh not authenticated"; exit 1; }
-python3 /tmp/check_owns.py "$MANIFEST" "$REPO_ROOT" || { echo "BLOCKED: slice ownership collision"; exit 1; }
+python3 "$ENG_BRAIN/bin/owns.py" "$MANIFEST" "$REPO_ROOT" || { echo "BLOCKED: slice ownership collision"; exit 1; }
 echo "preflight OK — target=$TARGET"
 ```
 
@@ -97,29 +93,20 @@ const built = await pipeline(
     `3. Update docs for what you changed and WHY.\n` +
     `4. Commit on branch ${s.branch}. Do NOT merge. Do NOT open a PR.\n` +
     `5. If the brief is wrong or you must touch a file you do not own, STOP and report it.\n\n` +
-    `6. Report every cross-slice signature you implemented, verbatim, one per line, in ` +
-    `implemented_signatures. Siblings compile against these and cannot see your code.\n\n` +
-    `Return JSON: {slice, files_written, tests_run, tests_passed, test_output, ` +
-    `implemented_signatures, docs_updated, blocked, blocker}`,
+    `Return JSON: {slice, files_written, tests_run, tests_passed, test_output, docs_updated, blocked, blocker}`,
     // agentType comes from /slice Phase 3.5 — the specialist matched to what this slice touches.
     { label: `build:${s.id}`, phase: 'Build', isolation: 'worktree',
       agentType: s.agents?.build || 'software-developer', schema: BUILD_SCHEMA }
   ),
   (r, s) => (r?.blocked || !r?.tests_passed) ? r : parallel([
-    () => agent(`Read the brief at ${args.repoRoot}/docs/arch/${args.feature}/${s.brief} FIRST.\n` +
-                `Then adversarially review the diff on branch ${s.branch} for slice ${s.id}. ` +
+    () => agent(`Adversarially review the diff on branch ${s.branch} for slice ${s.id}. ` +
                 `Find real defects: unhandled errors, missing validation at trust boundaries, ` +
                 `swallowed exceptions, files written outside ${s.owns.join(', ')}. ` +
                 `Report only defects you can point at a line for.`,
                 { label: `review:${s.id}`, phase: 'Verify',
                   agentType: s.agents?.review || 'ecc:code-reviewer', schema: REVIEW_SCHEMA }),
-    () => agent(`Read the brief at ${args.repoRoot}/docs/arch/${args.feature}/${s.brief} FIRST ` +
-                `and extract its "Edge cases to test" list. You are checking against that list, ` +
-                `not against your own idea of what should be tested.\n` +
-                `Then verify slice ${s.id}'s tests actually exercise each one. Re-run the test ` +
-                `command yourself in the worktree; do not trust the build agent's report. ` +
-                `A test that asserts nothing, or only the happy path, is a FAIL. ` +
-                `Return {adequate, gaps[], rerun_output}.`,
+    () => agent(`Verify slice ${s.id}'s tests actually exercise the brief's edge cases. ` +
+                `A test that asserts nothing, or only the happy path, is a FAIL. Return {adequate, gaps[]}.`,
                 { label: `tests:${s.id}`, phase: 'Verify',
                   agentType: s.agents?.test || 'ecc:tdd-guide', schema: TESTGATE_SCHEMA }),
   ]).then(([review, tests]) => ({ ...r, review, tests }))
@@ -132,29 +119,109 @@ start its review immediately rather than waiting for its slowest sibling.
 
 ## Phase 2 — The gate
 
-A slice may push **only** if all five hold. Every row has a command. An agent's assurance
-that it did the thing is not evidence that it did the thing.
+A slice may push **only** if all four hold:
 
-| Gate | Mechanical check |
+| Gate | Pass condition |
 |---|---|
-| Tests really ran | `gate.py testout` on the pasted output, and the verify agent's independent re-run agrees |
-| Edge cases | verify agent maps each brief edge case to a named test, and that name appears in the diff |
-| Interfaces | `gate.py iface` — reported signatures match the brief's contract |
-| Docs | `git diff --name-only` includes a doc file, and the diff is not a one-word touch |
+| Tests | tests ran and passed, with runner output shown — never "should pass" |
+| Edge cases | every edge case in the brief has a test that actually asserts on it |
+| Docs | what changed and why, updated in the repo |
 | Ownership | `git diff --name-only $TARGET...HEAD` ⊆ the slice's `owns` globs |
 
+Verify ownership mechanically per slice — this is the check that catches an agent that
+helpfully wandered:
+
 ```bash
-GATE=~/.claude/skills/_eng-brain/bin/gate.py
-
-# Tests: the runner actually printed counts. Prose claiming success fails here.
-printf '%s' "$TEST_OUTPUT" | python3 "$GATE" testout - || FAILED="$FAILED tests"
-
-# Interfaces: what the agent says it built vs what the brief said to build.
-printf '%s\n' "$IMPLEMENTED_SIGNATURES" > /tmp/sig-$SLICE_ID.txt
-python3 "$GATE" iface "$ARCH_DIR/$SLICE_BRIEF" /tmp/sig-$SLICE_ID.txt || FAILED="$FAILED interfaces"
-
-# Ownership: catches the agent that helpfully wandered.
 git -C "$WT" diff --name-only "$TARGET"...HEAD
 ```
 
-The interface check is the one that would have caught Tier 0. Slices pass their own tests
+Any file outside `owns` fails the gate. Do not merge it in manually and do not wave it
+through; report it and let the user decide.
+
+A slice that fails any gate does **not** push. Report it as failed with the reason, and
+keep going with the rest of the wave — one bad slice must not block three good ones.
+
+## Phase 3 — Push and open PRs
+
+For each slice that passed all four gates:
+
+```bash
+git -C "$WT" push -u origin "$BRANCH"
+gh pr create \
+  --base "$TARGET" \
+  --head "$BRANCH" \
+  --title "$FEATURE_SLUG/$SLICE_ID: $SLICE_NAME" \
+  --body "$(cat <<EOF
+Implements slice $SLICE_ID of \`docs/arch/$FEATURE_SLUG/ARCHITECTURE.md\`.
+
+## What changed
+<from the agent's report>
+
+## Tests
+\`\`\`
+<actual runner output>
+\`\`\`
+
+## Edge cases covered
+<from the brief, each with its test>
+
+## Files (all within slice ownership)
+<git diff --name-only>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+Then set `status: "pr_open"` on that slice in `slices.json` and commit the manifest.
+
+**Stop here.** Do not merge.
+
+## Phase 4 — Report and hand back
+
+```
+Fleet: <feature> wave 1 of 3
+
+  ✓ 01-sync-schema       PR #241 → dev   12 tests, 4 edge cases   docs ✓
+  ✓ 02-conflict-resolver PR #242 → dev    9 tests, 6 edge cases   docs ✓
+  ✗ 03-api-layer         BLOCKED — needed src/types.ts (owned by 01)
+
+2 PRs open against dev. Nothing merged.
+
+Review them, then: /fleet --accept    (merges accepted PRs, runs wave 2)
+Slice 03 needs a re-cut — its brief assumed ownership it does not have.
+```
+
+## Phase 5 — `/fleet --accept`
+
+Only runs when the user explicitly asks. For each PR the user accepted:
+
+```bash
+gh pr merge "$PR" --squash --delete-branch      # only for user-accepted PRs
+git -C "$REPO_ROOT" worktree remove "$WT"
+```
+
+Then write outcomes back to the brain — this is what makes the next `/arch` smarter:
+
+```bash
+gbrain timeline-add projects/$FEATURE_SLUG $(date +%F) \
+  "Slice 01 sync-schema merged (PR #241): <what shipped, in one line>"
+gbrain link projects/$FEATURE_SLUG analysis/adr-012-<topic> --link-type implements
+```
+
+If implementation contradicted an ADR — you discovered the decision was wrong once you
+built it — that is the **most valuable thing** to record. Write a new ADR with a
+`supersedes` edge to the old one and say what reality taught you. A brain that only
+records decisions that worked teaches you nothing.
+
+Then advance to the next wave, or report the fleet complete.
+
+## Failure modes
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Merge conflict between slices | ownership collision `/slice` missed | Re-run `owns.py`; re-cut. Never hand-resolve into another slice's files. |
+| Agent reports tests pass, no output | it did not run them | Gate requires pasted runner output. Fail it. |
+| PR targets the wrong branch | read the current branch instead of the manifest | `TARGET` comes from `slices.json.source_branch`, always |
+| Wave 2 built against stale interfaces | wave 1 PRs not merged before wave 2 started | Waves are barriers; wave 2 starts only after wave 1 is accepted |
+| Worktree left behind | `--accept` interrupted | `git worktree list` then `git worktree remove <path>` |

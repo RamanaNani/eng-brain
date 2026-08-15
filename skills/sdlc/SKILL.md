@@ -1,7 +1,7 @@
 ---
 name: sdlc
 version: 2.0.0
-description: "The spine. Carries one feature through the whole ladder — story, arch, contract, slice, fleet, before-pr, pr, canary — holding state in docs/arch/<feature>/STATE.json and refusing to advance past a gate that has not been shown to pass. Invoke this instead of the individual stage skills; it decides which stage runs next and stops when a gate fails."
+description: "The spine. Carries one feature through the whole ladder — story, arch, contract, slice, fleet, before-pr, review, pentest, pr, deploy, canary — holding state in docs/arch/<feature>/STATE.json and refusing to advance past a gate that has not been shown to pass. Invoke this instead of the individual stage skills; it decides which stage runs next and stops when a gate fails."
 triggers:
   - "build <feature>"
   - "ship <feature>"
@@ -22,8 +22,7 @@ allowed-tools:
 
 # /sdlc — the spine
 
-Stage skills (`/story`, `/arch`, `/contract`, `/slice`, `/fleet`, `/before-pr`, `/pr`,
-`/canary`) each do one job well. Nothing sequenced them. That had three consequences worth
+Stage skills (`/story`, `/arch`, `/contract`, `/slice`, `/fleet`, `/before-pr`, `/review`, `/pentest`, `/pr`, `/deploy`, `/canary`) each do one job well. Nothing sequenced them. That had three consequences worth
 naming, because this skill exists to fix exactly them:
 
 1. **"Where is this feature stuck?" was unanswerable** without reading the arch directory
@@ -34,34 +33,37 @@ naming, because this skill exists to fix exactly them:
 
 `/sdlc` holds the ladder. It does not reimplement the stages; it dispatches to them.
 
-Read `lib/CONVENTIONS.md` before any brain read or write. Everything there still applies —
+Read `$ENG_BRAIN/CONVENTIONS.md` before any brain read or write. Everything there still applies —
 this skill adds sequencing, not new brain rules.
 
 ## The ladder
 
 | # | Stage | Artifact | Gate to advance |
 |---|---|---|---|
-| 0 | `story` | `STORY.md` | ≥1 acceptance criterion, ≥1 negative case, ≥1 non-goal |
-| 1 | `arch` | `ARCHITECTURE.md` + `ADR-*.md` | ≥2 candidates weighed, 1 recommended, ≥1 ADR written, contradictions surfaced |
-| 2 | `contract` *(optional)* | `contracts/` | required iff ≥2 slices share an interface |
-| 3 | `slice` | `slices.json` + `slices/NN-*.md` | file ownership disjoint (`owns.py`), DAG acyclic, every failure mode lands in a slice or Out of scope (`gate.py`) |
-| 4 | `fleet` | `FLEET.md` | every slice green, **runner output shown** |
-| 5 | `before-pr` | `GATE.md` | `gate.py` passes on every slice |
-| 6 | `pr` | `PR.md` | PRs opened. **Never merged.** |
-| 7 | `canary` *(optional)* | `CANARY.md` | baseline recorded, delta non-regressive |
+| 1 | `story` | `STORY.md` | ≥1 acceptance criterion, ≥1 negative case, ≥1 non-goal |
+| 2 | `arch` | `ARCHITECTURE.md` | ≥2 candidates weighed, 1 recommended, ≥1 ADR written, contradictions surfaced |
+| 3 | `contract` *(optional)* | `contracts/` | required iff the feature spans ≥2 repos |
+| 4 | `slice` | `slices.json` | file ownership disjoint (`owns.py`), DAG acyclic, every failure mode lands in a slice or Out of scope (`gate.py`) |
+| 5 | `fleet` | `FLEET.md` | every slice green, **runner output shown** |
+| 6 | `before-pr` | `GATE.md` | `gate.py` passes on every slice |
+| 7 | `review` | `REVIEW.md` | no scope drift either direction, `/impeccable` rubric applied |
+| 8 | `pentest` *(optional)* | `PENTEST.md` | no unresolved high/critical findings |
+| 9 | `pr` | `PR.md` | PRs opened. **Never merged.** |
+| 10 | `deploy` *(optional)* | `DEPLOY.md` | rollback path recorded **and dry-run** before release |
+| 11 | `canary` *(optional)* | `CANARY.md` | baseline recorded, delta non-regressive |
 
 Optional stages must still be *recorded* — skipped with a reason, never left pending.
 "Not applicable" is a decision; make it visible.
 
 ## Phase 0 — Preamble
 
-Run the `lib/CONVENTIONS.md` §7 preamble first (`REPO_ROOT`, `SOURCE_BRANCH`, `SOURCE_ID`,
+Run the `$ENG_BRAIN/CONVENTIONS.md` §7 preamble first (`REPO_ROOT`, `SOURCE_BRANCH`, `SOURCE_ID`,
 `GBRAIN_PREPARE=true`). Then:
 
 ```bash
 FEATURE_SLUG="<kebab-case-from-the-ask>"     # /arch coins it; every later stage reuses it
 ARCH_DIR="$REPO_ROOT/docs/arch/$FEATURE_SLUG"
-STATE="$ENG_BRAIN/lib/bin/state.py"
+STATE="$ENG_BRAIN/bin/state.py"
 ```
 
 `FEATURE_SLUG` unset is not harmless — `ARCH_DIR` collapses to `docs/arch/` and artifacts
@@ -141,5 +143,5 @@ End every invocation with the ladder, so position is never ambiguous:
 
 ```
 offline-sync  ·  slice → fleet
-  ✓ story  ✓ arch  – contract (single repo)  ✓ slice  · fleet  · before-pr  · pr  · canary
+  ✓ story  ✓ arch  – contract (single repo)  ✓ slice  · fleet  · before-pr  · review  · pentest  · pr  · deploy  · canary
 ```

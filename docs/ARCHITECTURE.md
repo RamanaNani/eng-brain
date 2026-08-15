@@ -27,10 +27,10 @@ travels with a branch.
 
 `state.py` owns stage order and refuses to be talked out of it:
 
-- `pass` on a stage with an earlier mandatory stage unmet → **exit 2**
+- `pass` on a stage with ANY earlier stage — mandatory or optional — not yet pass/skipped → **exit 2**
 - `skip` on a mandatory stage → **exit 1**
 
-Optional stages (`contract`, `canary`) must still be *recorded* as skipped with a reason.
+Optional stages (`contract`, `pentest`, `deploy`, `canary`) must still be *recorded* as skipped with a reason.
 "Not applicable" is a decision, and decisions are the thing this system exists to keep.
 
 Putting the ladder in code rather than in the spine's prose is the central choice here.
@@ -68,7 +68,7 @@ what made the 2026-08-15 recovery slow.
 | Layer | Home | Restore | Fragility |
 |---|---|---|---|
 | gbrain bundle (53) | the npm package | reinstall + copy | low — hash-verified |
-| **this repo (13)** | **git** | `./install.sh` | **low, now** |
+| **this repo (17)** | **git** | `./install.sh` | **low, now** |
 | marketplace plugins (26) | marketplace repos | `claude plugin install` | low — recorded in `settings.json` |
 
 Layer 2 was the fragile one and is what this repo fixes.

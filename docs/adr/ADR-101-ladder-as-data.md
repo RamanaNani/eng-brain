@@ -23,7 +23,7 @@ Concretely:
 - `state.py pass --stage slice` with `arch` still pending → **exit 2**, with a message
   naming the blocking stage and the exact `skip` command if it genuinely does not apply.
 - `state.py skip --stage arch` → **exit 1**; mandatory stages cannot be skipped.
-- Optional stages (`contract`, `canary`) may be skipped but must carry a `--why`.
+- Optional stages (`contract`, `pentest`, `deploy`, `canary`) may be skipped but must carry a `--why`.
 
 ## Why
 

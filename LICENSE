@@ -19,3 +19,17 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Third-party attribution
+-----------------------
+
+The `pentest` skill is derived from usestrix/strix (https://github.com/usestrix/strix),
+licensed under Apache-2.0. Its methodology and playbooks are Strix's work; the pipeline
+orchestration around them is this project's.
+
+Strix's playbooks are fetched at runtime by skills/pentest/sync-upstream.sh into an
+ignored upstream/ directory. No Apache-2.0 licensed code is contained in this repository
+or in its distribution, and Strix's LICENSE and NOTICE are copied alongside the fetched
+files.

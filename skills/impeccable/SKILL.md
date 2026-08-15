@@ -19,7 +19,7 @@ allowed-tools:
 Not a rung on the ladder. `/sdlc` never dispatches to this. It is the standard that
 `/before-pr` mechanises and that a human applies where mechanisation runs out.
 
-Read `lib/CONVENTIONS.md` first.
+Read `$ENG_BRAIN/CONVENTIONS.md` first.
 
 ## Why a rubric and not taste
 
@@ -50,7 +50,7 @@ strict about: a wrong claim that looks verified costs more than an obvious gap.
 
 ### 3. Blast radius — what else can this reach?
 
-- Which files does it touch that no slice claimed? (`lib/bin/owns.py`)
+- Which files does it touch that no slice claimed? (`$ENG_BRAIN/bin/owns.py`)
 - Does it change a shared interface without a `contract` entry?
 - Does it widen permissions, add a network call, or touch auth, migrations, or deletion
   paths? Any of those raise the bar rather than meet it.

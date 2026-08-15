@@ -250,7 +250,7 @@ recovering, they restore differently:
 | Layer | Lives in | Restore |
 |---|---|---|
 | gbrain's own skills (53) | the gbrain npm package | reinstall gbrain, copy `node_modules/gbrain/skills/*` into `~/.claude/skills/` |
-| **eng-brain (13)** | **this repo** | `./install.sh` |
+| **eng-brain (17)** | **this repo** | `./install.sh` |
 | Marketplace plugins | marketplace repos | `claude plugin marketplace add <repo>` then `claude plugin install <plugin>@<market>` |
 
 Your installed plugins and their marketplaces are recorded in `~/.claude/settings.json`

@@ -25,7 +25,7 @@ problems would have to abort halfway through something named after shipping.
 
 This is also the first step in the pipeline that leaves the machine. Normal mode, prompts on.
 
-**Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` first.**
+**Read `$ENG_BRAIN/CONVENTIONS.md` first.**
 
 ## The one inviolable rule
 

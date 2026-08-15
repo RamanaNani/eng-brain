@@ -1,7 +1,153 @@
+# Engineering Brain Conventions
+
+Shared contract for `/arch`, `/slice`, `/fleet`. Read this before any brain read or write.
+
+Everything here is verified against gbrain 0.42.74 on the postgres/Supabase engine.
+Do not invent verbs. If a command is not listed here, run `gbrain <cmd> --help` first.
+
+## 1. The loop
+
+```
+capture ──► /arch ──► /slice ──► /fleet ──► PR ──► you accept ──► write-back
+   ▲                                                                   │
+   └───────────────── brain carries decisions forward ─────────────────┘
+```
+
+Each stage reads the brain before deciding and writes to the brain after deciding.
+A stage that does neither is a bug.
+
+## 2. Page types
+
+The active pack is `gbrain-base-v2` (15 types). It has **no** `decision` or
+`architecture` type, and we are **not** forking it yet — upstream guidance is that
+under ~20 pages should not be pack-codified. Map onto existing types instead:
+
+| What | Type | Slug | Extractable |
+|---|---|---|---|
+| Architecture for a feature | `project` | `projects/<feature-slug>` | no |
+| One architectural decision (ADR) | `analysis` | `analysis/adr-<nnn>-<topic>` | **yes** |
+| Shipped-slice outcome | timeline entry on the `project` page | — | — |
+
+ADRs are `analysis` deliberately: that type is `extractable: true`, so `dream`'s
+`extract_facts` mines them into facts and, downstream, into takes. `project` is not
+extractable, which is fine — the architecture page is an index, the ADRs carry the claims.
+
+**When you cross ~100 ADRs**, fork the pack and promote `decision` to a first-class type:
+`gbrain schema fork my-eng-pack && gbrain schema add-type decision --extractable`.
+Not before. Type proliferation is the failure mode the v2 pack exists to fix.
+
+Tag every page this system writes: `gbrain tag <slug> eng-brain` plus one of
+`architecture` / `adr` / `slice-outcome`. Tags are add-only on reconcile as of v0.41.37,
+so enrichment tags survive a re-chunk.
+
+## 3. Link types
+
+Arbitrary `--link-type` values are accepted (verified: a custom `supersedes` edge
+persisted and traversed via `graph-query`). Use exactly these six, no synonyms —
+consistency is what makes the graph queryable:
+
+| Edge | Meaning |
+|---|---|
+| `decided_by` | architecture → ADR that settled a question in it |
+| `supersedes` | new ADR → the ADR it replaces |
+| `constrains` | ADR → architecture it limits (often cross-project) |
+| `implements` | slice/PR → the architecture it builds |
+| `depends_on` | slice → slice it must follow |
+| `informed_by` | architecture → prior page that shaped it |
+
+Direction matters. `A --supersedes-> B` means A is the new one. Always write the edge
+from the new page to the old page, never the reverse.
+
+## 4. Read protocol — priors before design
+
+Never design without querying priors first. This is the whole point of the system.
+
+```bash
+# 1. Multi-hop synthesis across pages + takes + graph, with conflict + gap analysis.
+#    This is the primary recall verb — not `search`, not `query`.
+gbrain think "<the design question>. What have I decided about this before, and why?"
+
+# 2. Hybrid retrieval (vector + tsvector + RRF) for the raw supporting pages.
+gbrain query "<feature area> architecture decisions" --no-expand
+
+# 3. What the code actually is today (only if the repo is synced as a code source).
+gbrain code-def <Symbol>
+gbrain code-refs <Symbol>
+gbrain code-callers <Symbol>
+
+# 4. Prior ADRs as a graph, not a list.
+gbrain graph-query projects/<related-feature> --direction out --depth 2
+```
+
+Also call the MCP tools `takes_search` and `find_contradictions` — they have no thin CLI
+equivalent. `takes` are your graded past opinions; `find_contradictions` surfaces where a
+new decision fights an old one. **Surface contradictions to the user explicitly. Never
+silently overwrite a prior decision.**
+
+If `gbrain think` returns a gap ("the brain doesn't know X"), say so out loud rather than
+filling the gap with a confident guess. Gap analysis is a feature; suppressing it is not.
+
+## 5. Write protocol
+
+Write to the repo first (the agent-readable artifact), then the brain (the memory).
+
+```bash
+# 1. Repo — this is what /slice and worktree agents actually read.
+docs/arch/<feature-slug>/ARCHITECTURE.md
+docs/arch/<feature-slug>/ADR-001-<topic>.md
+docs/arch/<feature-slug>/slices/NN-<name>.md
+docs/arch/<feature-slug>/slices.json
+
+# 2. Brain — this is what the NEXT /arch inherits.
+#    NOTE: no --source. Eng-brain pages go to the DEFAULT source deliberately (see below).
+gbrain capture --file docs/arch/<slug>/ARCHITECTURE.md \
+  --slug projects/<slug> --type project --quiet
+gbrain capture --file docs/arch/<slug>/ADR-001-<topic>.md \
+  --slug analysis/adr-001-<topic> --type analysis --quiet
+
+# 3. Edges — a page with no edges is an orphan, and orphans are invisible to `think`.
+gbrain link projects/<slug> analysis/adr-001-<topic> --link-type decided_by
+gbrain link analysis/adr-001-<topic> analysis/adr-<old> --link-type supersedes
+
+# 4. Timeline — this is what makes trajectory and drift work.
+gbrain timeline-add projects/<slug> $(date +%F) "Architecture accepted; N slices planned"
+
+# 5. Tags
+gbrain tag projects/<slug> eng-brain && gbrain tag projects/<slug> architecture
+```
+
+### Why the default source, not the repo's source
+
+**Verified constraint (gbrain 0.42.74):** `capture` and `timeline-add` accept `--source`,
+but **`tag` and `link` do not** — they resolve slugs against the default source only.
+Capturing to `notes9` and then tagging produces
+`page "projects/x" (source=default) not found`, and you end up with an untagged,
+unlinked orphan.
+
+So eng-brain pages go to the **default source**, and that is the right call anyway:
+architecture decisions are cross-project knowledge. An ADR you wrote building Notes9
+should surface when you design something unrelated eighteen months later. Keeping one
+decision corpus is what makes `gbrain think` compound across projects instead of
+siloing per repo.
+
+The split is therefore:
+
+| Lives in | What | Why |
+|---|---|---|
+| The repo (`docs/arch/**`) | ARCHITECTURE.md, ADRs, slice briefs | Worktree agents read these; they version with the code |
+| Brain `default` source | `projects/<slug>`, `analysis/adr-*` | Cross-project decision memory |
+
+`SOURCE_ID` from §7 is still worth resolving — use it for `gbrain sync` and for code
+queries (`code-def`, `code-refs`) scoped to this repo. Just do not pass it to `capture`
+for eng-brain pages.
+
+**Every written page must get at least one edge in the same run.** The brain currently
+has 540 orphan pages out of 542 and `link_count: 0` — that is precisely why recall is
+weak today. Do not add to that pile.
 
 ## 6. Never
 
-- Never merge a PR. `/fleet` opens PRs and stops. A human accepts. No exceptions,
+- Never merge a PR. `/pr` opens PRs and stops. A human accepts. No exceptions,
   no `--auto-merge`, no "the gate passed so I merged it".
 - Never let two slices own the same file. `/slice` validates this; if the check fails,
   re-slice — do not "just be careful".
@@ -53,6 +199,26 @@ ARCH_DIR="$REPO_ROOT/docs/arch/$FEATURE_SLUG"
 export PATH="$HOME/.bun/bin:$PATH"
 export GBRAIN_PREPARE=true
 export GBRAIN_SOURCE=default
+
+# ENG_BRAIN — where the gate scripts live. Every stage skill invokes
+#   "$ENG_BRAIN/bin/state.py". Nothing else sets it, and an unset variable
+#   expands to "" — so the command silently becomes "python3 /bin/state.py",
+#   the gate DOES NOT RUN, and the stage reports success. That is the exact
+#   failure class this pipeline exists to prevent, so it fails closed below.
+#   Two install channels, two locations: plugin installs live under
+#   $CLAUDE_PLUGIN_ROOT, clone installs under ~/.claude/skills.
+if [ -z "${ENG_BRAIN:-}" ]; then
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/_eng-brain" ]; then
+    ENG_BRAIN="$CLAUDE_PLUGIN_ROOT/skills/_eng-brain"
+  else
+    ENG_BRAIN="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}/_eng-brain"
+  fi
+fi
+export ENG_BRAIN
+if [ ! -f "$ENG_BRAIN/bin/state.py" ]; then
+  echo "eng-brain: gate scripts unreachable at $ENG_BRAIN — refusing to continue" >&2
+  exit 1
+fi
 
 # Is gbrain reachable AT ALL? This must be answered before anything else, because a dead
 # CLI and an empty brain produce identical output downstream, and §8 below trains you to

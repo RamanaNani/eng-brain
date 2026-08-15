@@ -47,6 +47,19 @@ _UNCOUNTED_FAIL = re.compile(r"^(?:---\s*)?FAIL\b|^not ok\b", re.M)
 # 'E'. The count lives inside the parens — 'FAILED (failures=1, errors=2)'.
 _UNITTEST_RAN = re.compile(r"^Ran (\d+) tests? in ", re.M)
 _UNITTEST_FAILED = re.compile(r"^FAILED\s*\(([^)]*)\)\s*$", re.M)
+# A run that DIED is not a run that passed. None of the count regexes above fire
+# on a crash, so without these a suite that panicked after printing a green
+# summary reads as green. Checked before any green return.
+_ABORT = re.compile(
+    r"^panic:"
+    r"|Segmentation fault"
+    r"|^Traceback \(most recent call last\)"
+    r"|^error: could not compile"
+    r"|^error: test failed"
+    r"|^FAILURES!"
+    r"|Unhandled Error",
+    re.M,
+)
 
 
 def _sum(patterns, text):
@@ -59,7 +72,14 @@ def _sum(patterns, text):
 
 
 def check_testout(path):
-    """Return a list of problems. Empty list means the suite genuinely passed."""
+    """Return a list of problems. Empty list means the suite genuinely passed.
+
+    Ordering rule: EVERY red signal is consulted before any green return. An
+    earlier version returned [] as soon as it saw a pass count, which made the
+    uncounted-red, unittest-red and crash checks unreachable whenever a green
+    summary appeared anywhere in the file — so a monorepo slice teeing two
+    runners into one log read green while one runner was red.
+    """
     p = Path(path)
     if not p.exists():
         return [f"{path}: NOT RUN — no test output file. The slice did not run the tests."]
@@ -70,27 +90,31 @@ def check_testout(path):
     failed, saw_fail = _sum(_FAIL_COUNTS, text)
     passed, saw_pass = _sum(_PASS_COUNTS, text)
 
-    # unittest: counts live in 'Ran N tests' + 'FAILED (failures=1, errors=2)'
-    ran = _UNITTEST_RAN.search(text)
-    if ran and not saw_pass:
-        m = _UNITTEST_FAILED.search(text)
-        if m:
-            nums = [int(n) for n in re.findall(r"=(\d+)", m.group(1))]
-            return [f"{path}: RED — unittest reported FAILED ({m.group(1)})."] if nums else \
-                   [f"{path}: RED — unittest reported FAILED."]
-        return []  # 'Ran N tests' with no FAILED line is green
+    # --- red signals first, unconditionally ---------------------------------
+    if (m := _ABORT.search(text)):
+        return [f"{path}: RED — the run aborted ({m.group(0).strip()!r}). A crashed run is not a pass."]
 
     if saw_fail and failed > 0:
         return [f"{path}: RED — {failed} failing. A run with failures is not a pass."]
+
+    if (m := _UNITTEST_FAILED.search(text)):
+        return [f"{path}: RED — unittest reported FAILED ({m.group(1)})."]
+
+    if _UNCOUNTED_FAIL.search(text):
+        return [f"{path}: RED — runner reported FAIL."]
+
+    # --- only now may it be green -------------------------------------------
+    ran = _UNITTEST_RAN.search(text)
+    if ran and not saw_pass:
+        if int(ran.group(1)) == 0:
+            return [f"{path}: NOT RUN — the runner collected 0 tests."]
+        return []
 
     if saw_pass:
         if passed == 0:
             return [f"{path}: NOT RUN — the runner collected 0 tests."]
         return []
 
-    # No counted summary. Fall back to uncounted formats (go, TAP, jest file lines).
-    if _UNCOUNTED_FAIL.search(text):
-        return [f"{path}: RED — runner reported FAIL."]
     if _UNCOUNTED_PASS.search(text):
         return []
 

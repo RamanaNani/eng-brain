@@ -30,24 +30,27 @@ AUTO_SYNC="${ENG_BRAIN_AUTO_SYNC:-1}"
 # we own. Anything else we treat as a working clone.
 case "$ROOT" in
   *"/.claude/plugins/"*) MODE="plugin" ;;
-  *) MODE=$([ -d "$ROOT/.git" ] && echo "clone" || echo "plugin") ;;
+  # -e not -d: in a git worktree or submodule .git is a FILE containing
+  # "gitdir: ...". -d misdetects those as a plugin install, and this
+  # repo's own /fleet skill runs agents in worktrees.
+  *) MODE=$([ -e "$ROOT/.git" ] && echo "clone" || echo "plugin") ;;
 esac
 
 # ---------------------------------------------------------------- local clone
 if [ "$MODE" = "clone" ]; then
-  [ -x "$ROOT/install.sh" ] || exit 0
+  [ -f "$ROOT/install.sh" ] || exit 0
 
-  if "$ROOT/install.sh" --check >/dev/null 2>&1; then
+  if bash "$ROOT/install.sh" --check >/dev/null 2>&1; then
     exit 0                                  # in sync, say nothing
   fi
 
-  drift=$("$ROOT/install.sh" --check 2>/dev/null | grep -cE '^(MISSING|DIFFERS)' || true)
+  drift=$(bash "$ROOT/install.sh" --check 2>/dev/null | grep -cE '^(MISSING|DIFFERS)' || true)
 
   if [ "$AUTO_SYNC" = "1" ]; then
-    if "$ROOT/install.sh" >/dev/null 2>&1; then
+    if bash "$ROOT/install.sh" >/dev/null 2>&1; then
       echo "eng-brain: re-installed skills from $ROOT ($drift file(s) were out of date)."
     else
-      echo "eng-brain: skills are out of date and the re-install FAILED. Run: $ROOT/install.sh"
+      echo "eng-brain: skills are out of date and the re-install FAILED. Run: bash $ROOT/install.sh"
     fi
   else
     echo "eng-brain: $drift file(s) in $TARGET differ from $ROOT. Run: $ROOT/install.sh"
@@ -62,9 +65,12 @@ fi
 if [ -f "$STAMP" ]; then
   now=$(date +%s)
   then_=$(cat "$STAMP" 2>/dev/null || echo 0)
+  then_=${then_//[!0-9]/}; then_=${then_:-0}   # a non-numeric stamp would make
+                                              # $(( )) a syntax error on stderr,
+                                              # every single session start
   [ $((now - then_)) -lt 86400 ] && exit 0
 fi
-date +%s > "$STAMP" 2>/dev/null || true
+date +%s > "$STAMP" 2>/dev/null || exit 0   # cannot throttle -> do not call out
 
 local_ver=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
             "$ROOT/.claude-plugin/plugin.json" 2>/dev/null | head -1)

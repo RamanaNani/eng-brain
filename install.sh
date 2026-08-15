@@ -55,18 +55,44 @@ case "$MODE" in
     ;;
 
   install)
+    # Refuse to run alongside a plugin install — both channels register every
+    # skill, and you get whichever the loader reaches first.
+    if [ -d "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/eng-brain" ]; then
+      echo "eng-brain is already installed as a plugin. Running both registers every" >&2
+      echo "skill twice from two versions. Uninstall one first:" >&2
+      echo "  claude plugin uninstall eng-brain@eng-brain" >&2
+      exit 1
+    fi
+
     mkdir -p "$TARGET"
-    n=0
+    n=0 skipped=0
     for d in "$REPO"/skills/*/; do
       name="$(basename "$d")"
-      rm -rf "${TARGET:?}/$name"
-      cp -R "$d" "$TARGET/$name"
+      dest="$TARGET/$name"
+      # These names are generic — arch, review, deploy, pr. Never delete a
+      # directory we did not put there; a third party's hand-written
+      # ~/.claude/skills/review is not ours to remove.
+      if [ -d "$dest" ] && [ ! -f "$dest/.eng-brain" ]; then
+        echo "SKIP $name — exists and is not eng-brain-managed (no .eng-brain marker)" >&2
+        skipped=$((skipped + 1))
+        continue
+      fi
+      # Stage beside the target, then swap. A hook killed mid-copy must never
+      # leave the skill deleted-and-not-replaced.
+      staging="$TARGET/.$name.incoming.$$"
+      rm -rf "$staging"
+      cp -R "$d" "$staging"
+      : > "$staging/.eng-brain"
+      rm -rf "$staging/bin/_recovered"
+      find "$staging" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+      find "$staging" -name '*.py' -path '*/bin/*' -exec chmod +x {} + 2>/dev/null || true
+      find "$staging" -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
+      rm -rf "$dest"
+      mv "$staging" "$dest"
       n=$((n + 1))
     done
-    rm -rf "$TARGET/_eng-brain/bin/_recovered"
-    find "$TARGET" -name '*.py' -path '*/bin/*' -exec chmod +x {} \; 2>/dev/null || true
-    find "$TARGET" -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
     echo "installed $n skills -> $TARGET"
+    [ "$skipped" -gt 0 ] && echo "$skipped skipped (unmanaged) — see above" >&2
     echo "verify with: ./install.sh --check"
     ;;
 

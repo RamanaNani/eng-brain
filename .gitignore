@@ -11,3 +11,7 @@ __pycache__/
 /skills/pentest/upstream/
 /skills/pentest/.upstream-tag
 /skills/pentest/.last-check
+
+# Partially-recovered originals: provenance only, not runnable. install.sh
+# strips them for clone users; gitignore keeps them off the plugin channel too.
+/skills/_eng-brain/bin/_recovered/

@@ -23,7 +23,7 @@ allowed-tools:
 causing harm, and it is written to be followed literally rather than adapted — the whole
 premise is that the moment you need it is the moment you are worst equipped to improvise.
 
-Read `skills/_eng-brain/CONVENTIONS.md` §7 preamble only. Skip the rest of the brain
+Read `$ENG_BRAIN/CONVENTIONS.md` §7 preamble only. Skip the rest of the brain
 protocol until Phase 4; recall is not the priority while something is broken.
 
 ## Order of operations

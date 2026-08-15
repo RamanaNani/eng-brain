@@ -23,7 +23,7 @@ allowed-tools:
 Stage 1 of 11. `/story` decides *what* and *for whom*. `/arch` decides *how*.
 Running `/arch` first is how you get an elegant design for the wrong problem.
 
-**Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` first.**
+**Read `$ENG_BRAIN/CONVENTIONS.md` first.**
 
 ## The one inviolable rule
 
