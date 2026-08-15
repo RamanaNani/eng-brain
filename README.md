@@ -61,6 +61,11 @@ cd eng-brain
 In clone mode the same hook keeps `~/.claude/skills/` in step with the repo automatically —
 edit here, and the next session picks it up.
 
+> **Pick one, not both.** Installing the plugin *and* running `./install.sh` registers
+> every skill twice and makes resolution ambiguous. If you switch from clone to plugin,
+> remove the projected copies first:
+> `for s in sdlc story arch contract slice fleet before-pr pr canary impeccable grill-me brain-sync change _eng-brain; do rm -rf ~/.claude/skills/$s; done`
+
 Then, in Claude Code:
 
 ```
