@@ -1,7 +1,7 @@
 ---
 name: fleet
 version: 1.0.0
-description: "Run sliced work across parallel git worktrees. One agent per slice, wave by wave, each gated on real tests and written docs before it may push. Opens a PR per slice against your source branch and STOPS — you accept, then /fleet --accept merges and writes outcomes back to gbrain. Stage 5 of 11 in the ladder (story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary?)."
+description: "Run sliced work across parallel git worktrees. One agent per slice, wave by wave, each gated on real test output before the next wave starts. Assembles passing slices onto an integration branch and STOPS — it never opens PRs and never merges. /before-pr gates, /review reads the seam, /pr publishes, a human merges."
 triggers:
   - fleet
   - run the worktrees
@@ -30,16 +30,20 @@ in isolated worktrees, and **it never merges**.
 
 ## The one inviolable rule
 
-`/fleet` opens pull requests and stops. It does not merge. It does not enable
-auto-merge. It does not merge "because the gate passed". The user accepts, explicitly,
-and only then does `/fleet --accept` merge.
+`/fleet` assembles passing slices onto an integration branch and stops. It does not open
+pull requests — that is `/pr`, stage 9, after `/before-pr` and `/review` have both passed.
+It does not merge, it does not enable auto-merge, and it does not merge "because the gate
+passed". A human merges, and only then does `/deploy` pick up.
+
+There is no `--accept` subcommand. An earlier design had one; the ladder replaced it, and
+the merge decision now sits with a person rather than a flag.
 
 If you are ever unsure whether you are allowed to merge: you are not.
 
 ## When to invoke
 
 After `/slice`, when the user says "fleet", "run the worktrees", "build the slices",
-"execute the plan". Use `/fleet --accept` after they have reviewed the PRs.
+"execute the plan". The next stage is `/before-pr`; a human merges later, after `/pr`.
 
 ## Phase 0 — Preamble and preflight
 
@@ -188,33 +192,26 @@ Fleet: <feature> wave 1 of 3
 
 2 PRs open against dev. Nothing merged.
 
-Review them, then: /fleet --accept    (merges accepted PRs, runs wave 2)
+Next: /before-pr    (gate), then /review, then /pr
 Slice 03 needs a re-cut — its brief assumed ownership it does not have.
 ```
 
-## Phase 5 — `/fleet --accept`
+## Phase 5 — hand off
 
-Only runs when the user explicitly asks. For each PR the user accepted:
+`/fleet` stops here. Passing slices are assembled onto the integration branch; nothing is
+published and nothing is merged.
+
+The next rung is `/before-pr` (stage 6), then `/review` (7), optionally `/pentest` (8), and
+only then `/pr` (9) opens the pull requests. A human merges. `/deploy` (10) detects that
+merge and picks up.
+
+An earlier design gave this skill an `--accept` subcommand that merged accepted PRs and
+started the next wave. It is gone. Merging was moved out of the pipeline entirely, because
+a flag that merges is exactly the affordance the never-merge rule exists to remove.
 
 ```bash
-gh pr merge "$PR" --squash --delete-branch      # only for user-accepted PRs
-git -C "$REPO_ROOT" worktree remove "$WT"
+python3 "$ENG_BRAIN/bin/state.py" pass "$ARCH_DIR" --stage fleet --artifact FLEET.md
 ```
-
-Then write outcomes back to the brain — this is what makes the next `/arch` smarter:
-
-```bash
-gbrain timeline-add projects/$FEATURE_SLUG $(date +%F) \
-  "Slice 01 sync-schema merged (PR #241): <what shipped, in one line>"
-gbrain link projects/$FEATURE_SLUG analysis/adr-012-<topic> --link-type implements
-```
-
-If implementation contradicted an ADR — you discovered the decision was wrong once you
-built it — that is the **most valuable thing** to record. Write a new ADR with a
-`supersedes` edge to the old one and say what reality taught you. A brain that only
-records decisions that worked teaches you nothing.
-
-Then advance to the next wave, or report the fleet complete.
 
 ## Failure modes
 
