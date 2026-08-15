@@ -65,8 +65,8 @@ Each row is one shared fact. Verbatim values, not descriptions of values.
 
 | # | Fact | Producer | Consumer | Conformance test |
 |---|---|---|---|---|
-| C1 | Allowed attachment kinds are exactly `"literature_review"`, `"protocol"`, `"experiment"` | AI `core/agent.py:976` | Notes9 `lib/mention-types.ts:12` | AI `test_kinds_match`, Notes9 `mention-types.spec.ts` |
-| C2 | `attachments[].kind` is required and never null on the wire | AI `request.py:88` | Notes9 `right-sidebar.tsx:1307` | contract fixture, both sides |
+| C1 | Allowed attachment kinds are exactly `"literature_review"`, `"protocol"`, `"experiment"` | AI `core/agent.py:976` | acme-app `lib/mention-types.ts:12` | AI `test_kinds_match`, acme-app `mention-types.spec.ts` |
+| C2 | `attachments[].kind` is required and never null on the wire | AI `request.py:88` | acme-app `right-sidebar.tsx:1307` | contract fixture, both sides |
 
 Rules:
 - Spell out the literal values. "The kind enum" is not a contract; the list is.
@@ -88,12 +88,12 @@ def test_kinds_match_contract():
     fixture = json.loads(pathlib.Path("contracts/attachment-kinds.json").read_text())
     assert sorted(ALLOWED_KINDS) == sorted(fixture["kinds"]), (
         "AI widened the kind set without updating contracts/attachment-kinds.json; "
-        "Notes9 will reject these at the seam"
+        "acme-app will reject these at the seam"
     )
 ```
 
 ```typescript
-// Notes9 side — lib/__tests__/contract-kinds.spec.ts
+// acme-app side — lib/__tests__/contract-kinds.spec.ts
 import fixture from "../../contracts/attachment-kinds.json";
 import { MENTION_KINDS } from "../mention-types";
 
@@ -113,8 +113,8 @@ build produces a broken production.
 ```markdown
 ## Order
 - Build dependency: none. Both sides can be built and reviewed in parallel.
-- Deploy order: AI must deploy FIRST. Notes9 sending a new kind to an old AI
-  gets a 422. AI accepting a kind no Notes9 sends yet is inert.
+- Deploy order: AI must deploy FIRST. acme-app sending a new kind to an old AI
+  gets a 422. AI accepting a kind no acme-app sends yet is inert.
 - Backward window: AI accepts both old and new sets for one release.
 ```
 

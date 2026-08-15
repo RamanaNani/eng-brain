@@ -40,16 +40,16 @@ ARCH_DIR="$REPO_ROOT/docs/arch/$FEATURE_SLUG"
 #   gbrain call — do not pin it inline on individual commands. Source resolution falls back
 #   to matching the working directory against a registered code source's `local_path`, and
 #   CLAUDE.md mandates running this pipeline from the repo root, which for this user IS a
-#   registered code source (`~/Desktop/ELN/Notes9`). So every unpinned gbrain call in the
+#   registered code source (`~/code/acme-app`). So every unpinned gbrain call in the
 #   session silently resolves against the code source instead of `default`, where eng-brain
 #   pages live. Pinning only the write helper is not enough: the write lands correctly and
 #   then every *verification* command reads the wrong source and reports clean.
-#   Verified from inside ~/Desktop/ELN/Notes9 on 0.42.74.0, on a page with a real edge:
+#   Verified from inside ~/code/acme-app on 0.42.74.0, on a page with a real edge:
 #     unset  → gbrain call get_links '{"slug":"test-round3/conv-proj"}'  → []   rc=0
 #     export → same command                                             → 2 rows, rc=0
 #   The read verbs fail SILENTLY like that. The mutating ones fail loudly and name the
 #   source they resolved, which is how this was finally caught:
-#     addTag failed: page "test-round3/conv-proj" (source=gstack-code-notes9-76051341) not found
+#     addTag failed: page "test-round3/conv-proj" (source=acme-app-code-1a2b3c4d) not found
 export PATH="$HOME/.bun/bin:$PATH"
 export GBRAIN_PREPARE=true
 export GBRAIN_SOURCE=default
@@ -77,7 +77,7 @@ print(next((x['id'] for x in s if x.get('local_path') and os.path.realpath(x['lo
 # `if`, NOT `[ -z "$SOURCE_ID" ] && echo …`. A trailing `test && cmd` is the last statement
 # in this block, so when the repo IS registered the test is false and the whole preamble
 # returns 1 — non-zero exactly when everything succeeded. Measured on the old form from
-# ~/Desktop/ELN/Notes9 (registered) and from a throwaway git repo (not registered):
+# ~/code/acme-app (registered) and from a throwaway git repo (not registered):
 #   registered    -> rc=1, and silent, because the WARN branch never fired
 #   NOT registered-> rc=0, with the warning printed
 # Precisely inverted. An `if` whose condition is false returns 0, which is why this form is
@@ -98,7 +98,7 @@ write into `default`.
 
 ### What the `GBRAIN_SOURCE=default` export does and does not change
 
-Measured from `~/Desktop/ELN/Notes9`, with and without the export:
+Measured from `~/code/acme-app`, with and without the export:
 
 | Verb | Effect of the export | Note |
 |---|---|---|

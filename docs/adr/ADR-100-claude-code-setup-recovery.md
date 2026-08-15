@@ -68,8 +68,8 @@ tool-call payloads. See "Recovery procedure".
    `~/.claude/settings.json` under `env`.
 
 3. **The brain is not reachable from the Supabase MCP.** It lives in project
-   `duatdzhcnybzcbldcgrt`; the connected MCP only exposes `notes9`
-   (`rutcjpugsrfoobsrufnn`) and `practice`. Query it with Bun's native client using
+   a *different* Supabase project from the ones the MCP is connected to. Do not assume
+   the two overlap — check. Query the brain with Bun's native client using
    `database_url` from `~/.gbrain/config.json`.
 
 4. **`pages` has no `content` column.** Body text is in `content_chunks.chunk_text`,
