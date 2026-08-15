@@ -1,7 +1,7 @@
 ---
 name: canary
 version: 2.0.0
-description: "Stage 7, optional. Records a pre-change baseline and compares the post-change delta, so 'it works' becomes a measured claim. Run --baseline BEFORE the change lands and again after to get the delta. Refuses to report a delta with no baseline."
+description: "Stage 11, optional. Records a pre-change baseline and compares the post-change delta, so 'it works' becomes a measured claim. Run --baseline BEFORE the change lands and again after to get the delta. Refuses to report a delta with no baseline."
 triggers:
   - "canary"
   - "baseline"
@@ -17,7 +17,7 @@ allowed-tools:
 
 # /canary — measured, not asserted
 
-Stage 7 of the ladder (see `skills/sdlc/SKILL.md`), optional but recorded. Position:
+Stage 11 of the ladder (see `skills/sdlc/SKILL.md`), optional but recorded. Position:
 `deploy → **canary**`.
 
 Optional means "may be skipped with a reason", not "may be ignored". If a feature has no

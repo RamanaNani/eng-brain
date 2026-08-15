@@ -1,7 +1,7 @@
 ---
 name: review
 version: 2.0.0
-description: "Stage 6. Substantive review of what the fleet actually built — scope drift in both directions, plus the /impeccable rubric applied to the real diff. Runs after /before-pr (mechanical gate) and before /pr, because nobody should spend review attention on code whose tests are red."
+description: "Stage 7. Substantive review of what the fleet actually built — scope drift in both directions, plus the /impeccable rubric applied to the real diff. Runs after /before-pr (mechanical gate) and before /pr, because nobody should spend review attention on code whose tests are red."
 triggers:
   - "review the slices"
   - "review the diff"
@@ -18,8 +18,8 @@ allowed-tools:
 
 # /review — did we build the right thing
 
-Stage 6 of the ladder (see `skills/sdlc/SKILL.md`).
-Position: `fleet → before-pr → **review** → pr`.
+Stage 7 of the ladder (see `skills/sdlc/SKILL.md`).
+Position: `before-pr → **review** → pentest?`.
 
 `/before-pr` proves the code *works*: tests are green and every failure mode reached a
 slice. It cannot tell you whether the work is the work that was asked for. A slice can pass

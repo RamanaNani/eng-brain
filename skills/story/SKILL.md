@@ -1,7 +1,7 @@
 ---
 name: story
 version: 1.0.0
-description: "Turn a request into a user story with acceptance criteria and a runnable definition of done, before any design exists. Names the user, the job, the observable outcome, and the command that proves it. Writes STORY.md. Stage 0 of story -> arch -> slice -> fleet."
+description: "Turn a request into a user story with acceptance criteria and a runnable definition of done, before any design exists. Names the user, the job, the observable outcome, and the command that proves it. Writes STORY.md. Stage 1 of 11 in the ladder (story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary?)."
 triggers:
   - story
   - user story
@@ -20,7 +20,7 @@ allowed-tools:
 
 # /story — the ask, before the design
 
-Stage 0 of four. `/story` decides *what* and *for whom*. `/arch` decides *how*.
+Stage 1 of 11. `/story` decides *what* and *for whom*. `/arch` decides *how*.
 Running `/arch` first is how you get an elegant design for the wrong problem.
 
 **Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` first.**

@@ -1,7 +1,7 @@
 ---
 name: fleet
 version: 1.0.0
-description: "Run sliced work across parallel git worktrees. One agent per slice, wave by wave, each gated on real tests and written docs, retried once on failure and never twice. Passing slices assemble onto an integration branch and it STOPS — no PR. /review reads the seam, then /pr publishes. Stage 4 of story -> arch -> slice -> fleet -> review -> pr."
+description: "Run sliced work across parallel git worktrees. One agent per slice, wave by wave, each gated on real tests and written docs, retried once on failure and never twice. Passing slices assemble onto an integration branch and it STOPS — no PR. /review reads the seam, then /pr publishes. Stage 5 of 11 in the ladder (story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary?)."
 triggers:
   - fleet
   - run the worktrees
@@ -23,7 +23,7 @@ allowed-tools:
 
 # /fleet — parallel worktrees, gated, PR-only
 
-Stage 3 of three. `/arch` decided. `/slice` divided. `/fleet` builds — in parallel,
+Stage 5 of 11. `/arch` decided. `/slice` divided. `/fleet` builds — in parallel,
 in isolated worktrees, and **it never merges**.
 
 **Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` first.**

@@ -1,7 +1,7 @@
 ---
 name: slice
 version: 1.0.0
-description: "Split an architecture into conflict-free parallel work slices. Assigns each slice exclusive file ownership, validates no two slices can collide, builds the dependency DAG, and writes one self-contained brief per slice plus slices.json. Stage 2 of arch -> slice -> fleet."
+description: "Split an architecture into conflict-free parallel work slices. Assigns each slice exclusive file ownership, validates no two slices can collide, builds the dependency DAG, and writes one self-contained brief per slice plus slices.json. Stage 4 of 11 in the ladder (story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary?)."
 triggers:
   - slice
   - split this architecture
@@ -22,7 +22,7 @@ allowed-tools:
 
 # /slice — architecture into conflict-free parallel work
 
-Stage 2 of three. `/arch` decided what to build. `/slice` decides **who can work in
+Stage 4 of 11. `/arch` decided what to build. `/slice` decides **who can work in
 parallel without stepping on each other**. `/fleet` executes it.
 
 **Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` first.**

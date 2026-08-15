@@ -19,7 +19,7 @@ allowed-tools:
 # /deploy — release, with a way back
 
 Stage 10 of the ladder (see `skills/sdlc/SKILL.md`), optional but **recorded**.
-Position: `pr → *(a human merges)* → **deploy** → canary`.
+Position: `pr → **deploy** → canary?`.
 
 Read `skills/_eng-brain/CONVENTIONS.md` first.
 

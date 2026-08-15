@@ -1,7 +1,7 @@
 ---
 name: arch
 version: 1.0.0
-description: "Brain-grounded architecture for a new feature. Queries gbrain for your prior decisions and contradictions, traces the real code flow, proposes 1-3 options with a recommendation, writes ARCHITECTURE.md + ADRs to the repo and to the brain. Stage 1 of arch -> slice -> fleet."
+description: "Brain-grounded architecture for a new feature. Queries gbrain for your prior decisions and contradictions, traces the real code flow, proposes 1-3 options with a recommendation, writes ARCHITECTURE.md + ADRs to the repo and to the brain. Stage 2 of 11 in the ladder (story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary?)."
 triggers:
   - arch
   - design this feature
@@ -22,7 +22,7 @@ allowed-tools:
 
 # /arch — brain-grounded architecture
 
-Stage 1 of three. `/arch` decides *what to build and why*. `/slice` splits it.
+Stage 2 of 11. `/arch` decides *what to build and why*. `/slice` splits it.
 `/fleet` builds it.
 
 **Read `~/.claude/skills/_eng-brain/CONVENTIONS.md` before doing anything else.**

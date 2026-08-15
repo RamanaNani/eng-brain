@@ -2,8 +2,8 @@
 # eng-brain environment + preflight.
 #
 # Two ways to use it:
-#   source lib/setup.sh     export the env every stage skill needs, quietly
-#   ./lib/setup.sh          run the checks and print a report (exit 1 if broken)
+#   source skills/_eng-brain/setup.sh     export the env every stage skill needs, quietly
+#   ./skills/_eng-brain/setup.sh  run the checks and print a report (exit 1 if broken)
 #
 # The three exports below are not cosmetic. Each one guards a failure that is
 # hard to diagnose from its symptom:
@@ -30,6 +30,19 @@ export PATH
 export GBRAIN_PREPARE="${GBRAIN_PREPARE:-true}"
 export GBRAIN_DISABLE_DIRECT_POOL="${GBRAIN_DISABLE_DIRECT_POOL:-1}"
 
+# ENG_BRAIN — every stage skill invokes "$ENG_BRAIN/bin/state.py". Nothing else
+# sets it, so without this an unset ENG_BRAIN silently expands to "" and the
+# command becomes "python3 /bin/state.py": the gate does not run, and the
+# pipeline looks like it passed. Resolve it for both install modes.
+if [ -z "${ENG_BRAIN:-}" ]; then
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/_eng-brain" ]; then
+    ENG_BRAIN="$CLAUDE_PLUGIN_ROOT/skills/_eng-brain"      # plugin install
+  else
+    ENG_BRAIN="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}/_eng-brain"   # clone install
+  fi
+fi
+export ENG_BRAIN
+
 # Sourced? Set the env and stop. Only run checks when executed directly.
 (return 0 2>/dev/null) && return 0
 
@@ -44,7 +57,7 @@ echo
 echo "Toolchain"
 command -v bun     >/dev/null 2>&1 && ok "bun $(bun --version 2>/dev/null)"     || bad "bun not found — https://bun.sh"
 command -v git     >/dev/null 2>&1 && ok "git $(git --version 2>/dev/null | awk '{print $3}')" || bad "git not found"
-command -v python3 >/dev/null 2>&1 && ok "python3 $(python3 --version 2>&1 | awk '{print $2}')" || bad "python3 not found (lib/bin/*.py need it)"
+command -v python3 >/dev/null 2>&1 && ok "python3 $(python3 --version 2>&1 | awk '{print $2}')" || bad "python3 not found (skills/_eng-brain/bin/*.py need it)"
 command -v claude  >/dev/null 2>&1 && ok "claude CLI"                            || warn "claude CLI not found — skills can't be invoked without it"
 command -v gh      >/dev/null 2>&1 && ok "gh CLI"                                || warn "gh not found — /pr needs it to open pull requests"
 echo
@@ -69,6 +82,7 @@ echo
 
 echo "Environment"
 [ "$GBRAIN_PREPARE" = "true" ] && ok "GBRAIN_PREPARE=true" || bad "GBRAIN_PREPARE must be true"
+[ -f "$ENG_BRAIN/bin/state.py" ] && ok "ENG_BRAIN -> $ENG_BRAIN" || bad "ENG_BRAIN does not resolve to a real dir ($ENG_BRAIN) — stage gates will not run"
 case ":$PATH:" in *":$HOME/.bun/bin:"*) ok "~/.bun/bin on PATH" ;; *) bad "~/.bun/bin not on PATH" ;; esac
 echo
 

@@ -1,7 +1,7 @@
 ---
 name: pr
 version: 1.0.0
-description: "Raise the pull request after a review has passed. Composes the body from the slice manifest, refuses if the review did not happen, and records the PR number back to the manifest and gbrain. The first step in the pipeline that leaves your machine. Stage 6 of story -> arch -> slice -> fleet -> review -> pr."
+description: "Raise the pull request after a review has passed. Composes the body from the slice manifest, refuses if the review did not happen, and records the PR number back to the manifest and gbrain. The first step in the pipeline that leaves your machine. Stage 9 of 11 in the ladder (story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary?)."
 triggers:
   - pr
   - raise pr

@@ -1,7 +1,7 @@
 ---
 name: before-pr
 version: 2.0.0
-description: "Stage 5. The last gate before PRs exist. Runs gate.py over every slice — failure-mode coverage and honest test output — and writes GATE.md. Refuses to pass on asserted test results; it wants runner output. Invoked by /sdlc after /fleet, or directly before /pr."
+description: "Stage 6. The last gate before PRs exist. Runs gate.py over every slice — failure-mode coverage and honest test output — and writes GATE.md. Refuses to pass on asserted test results; it wants runner output. Invoked by /sdlc after /fleet, or directly before /pr."
 triggers:
   - "gate the slices"
   - "ready for PR"
@@ -17,7 +17,7 @@ allowed-tools:
 
 # /before-pr — the last honest moment
 
-Stage 5 of the ladder (see `skills/sdlc/SKILL.md`). Position: `fleet → **before-pr** → review → pr`.
+Stage 6 of the ladder (see `skills/sdlc/SKILL.md`). Position: `fleet → **before-pr** → review`.
 
 Everything upstream of here is recoverable. Once `/pr` runs, work is visible to other
 people and a bad slice costs someone else's attention. This is the last stage where being
