@@ -6,3 +6,8 @@ __pycache__/
 # Left on disk for the sync, kept out of git so captured_at doesn't churn history.
 /analysis/
 /projects/
+
+# Strix playbooks fetched by pentest/sync-upstream.sh — not vendored, not ours to commit.
+/skills/pentest/upstream/
+/skills/pentest/.upstream-tag
+/skills/pentest/.last-check

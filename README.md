@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-6b4fbb)](https://claude.com/claude-code)
-[![Skills](https://img.shields.io/badge/skills-13-green.svg)](skills/)
+[![Skills](https://img.shields.io/badge/skills-15-green.svg)](skills/)
 
 One feature goes in at `/sdlc` and comes out as reviewed pull requests — through story,
 architecture, contracts, slicing, parallel implementation, and gating. Every architectural
@@ -12,7 +12,7 @@ decision is written back to a knowledge brain, so the *next* feature inherits wh
 one learned instead of rediscovering it.
 
 ```
-/story → /arch → /contract? → /slice → /fleet → /before-pr → /pr → /canary?
+/story → /arch → /contract? → /slice → /fleet → /before-pr → /review → /pentest? → /pr → /canary?
 ```
 
 ---
@@ -66,7 +66,7 @@ than a directory of markdown nobody opens again.
 
 ## What you get
 
-**13 skills.** The eight ladder stages, plus:
+**15 skills.** The ten ladder stages, plus:
 
 | Skill | What it's for |
 |---|---|
@@ -104,8 +104,27 @@ being run out of order — which is the problem the spine exists to fix.
 | `slice` | `slices.json` | ownership disjoint, DAG acyclic, failure modes routed |
 | `fleet` | `FLEET.md` | every slice green, **runner output shown** |
 | `before-pr` | `GATE.md` | `gate.py` passes on every slice |
+| `review` | `REVIEW.md` | no scope drift either way, `/impeccable` rubric clean |
+| `pentest` *(opt)* | `PENTEST.md` | no unresolved high/critical findings |
 | `pr` | `PR.md` | PRs opened — **never merged** |
 | `canary` *(opt)* | `CANARY.md` | baseline recorded, delta non-regressive |
+
+The three gates before `pr` are separate on purpose, and ordered cheapest-first:
+
+- **`before-pr`** is mechanical — it proves the code *works*. Fast, so it runs first;
+  nobody should spend review attention on a branch whose suite is red.
+- **`review`** is judgment — it asks whether the work is the work that was **asked for**.
+  No test can tell you that.
+- **`pentest`** is security — a Strix-style DAST run against a live target, gated behind an
+  explicit `engagement.md` scope file. Optional, because a docs change has no attack surface.
+
+> **Optional means "may be skipped", not "may be ignored".** An optional stage still blocks
+> the ladder until it is explicitly recorded — `state.py` refuses `pr` while `pentest` is
+> merely pending. Skipping requires a reason that goes on the record:
+> ```bash
+> state.py skip "$ARCH_DIR" --stage pentest --why "docs-only change, no attack surface"
+> ```
+> Silently dropping the security stage is precisely the outcome it exists to prevent.
 
 Optional stages must still be *recorded* as skipped, with a reason. "Not applicable" is a
 decision, and decisions are what this system exists to keep.
@@ -117,7 +136,7 @@ position travels with its branch and survives a lost session.
 $ /sdlc where is offline-sync
 
 offline-sync  ·  slice → fleet
-  ✓ story  ✓ arch  – contract (single repo)  ✓ slice  · fleet  · before-pr  · pr  · canary
+  ✓ story  ✓ arch  – contract (single repo)  ✓ slice  · fleet  · before-pr  · review  · pentest  · pr  · canary
 ```
 
 ---
@@ -171,7 +190,7 @@ cd eng-brain
 > skill twice and makes resolution ambiguous. Switching from clone to plugin? Remove the
 > projected copies first:
 > ```bash
-> for s in sdlc story arch contract slice fleet before-pr pr canary \
+> for s in sdlc story arch contract slice fleet before-pr review pentest pr canary \
 >          impeccable grill-me brain-sync change _eng-brain; do
 >   rm -rf ~/.claude/skills/$s
 > done
@@ -238,7 +257,7 @@ any edit to that file.
 /plugin marketplace remove eng-brain
 
 # clone
-for s in sdlc story arch contract slice fleet before-pr pr canary \
+for s in sdlc story arch contract slice fleet before-pr review pentest pr canary \
          impeccable grill-me brain-sync change _eng-brain; do
   rm -rf ~/.claude/skills/$s
 done

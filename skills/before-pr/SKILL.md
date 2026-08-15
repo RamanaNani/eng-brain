@@ -17,7 +17,7 @@ allowed-tools:
 
 # /before-pr — the last honest moment
 
-Stage 5 of the ladder (see `skills/sdlc/SKILL.md`). Position: `fleet → **before-pr** → pr`.
+Stage 5 of the ladder (see `skills/sdlc/SKILL.md`). Position: `fleet → **before-pr** → review → pr`.
 
 Everything upstream of here is recoverable. Once `/pr` runs, work is visible to other
 people and a bad slice costs someone else's attention. This is the last stage where being

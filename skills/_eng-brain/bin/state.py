@@ -31,7 +31,15 @@ LADDER = [
     ("contract",  True,  "contracts/"),
     ("slice",     False, "slices.json"),
     ("fleet",     False, "FLEET.md"),
+    # before-pr is mechanical and cheap; review is judgment and expensive.
+    # Mechanical first — nobody should spend review attention on code whose
+    # tests are red.
     ("before-pr", False, "GATE.md"),
+    ("review",    False, "REVIEW.md"),
+    # Optional because a docs change does not warrant a DAST run and DAST needs
+    # a live target — but it must be SKIPPED WITH A REASON, never silently
+    # dropped. That is the whole point of optional-but-recorded here.
+    ("pentest",   True,  "PENTEST.md"),
     ("pr",        False, "PR.md"),
     ("canary",    True,  "CANARY.md"),
 ]
@@ -125,8 +133,10 @@ def _require_order(st, stage):
         s = st["stages"].get(n, {}).get("status")
         if s in ("pass", "skipped"):
             continue
-        if n in OPTIONAL:
-            continue
+        # NB: optional stages block too. "Optional" means it may be SKIPPED —
+        # with a reason on the record — not that it may be ignored. Letting a
+        # pending `pentest` slide silently is exactly the outcome the stage
+        # exists to prevent.
         print(
             f"REFUSED: cannot record '{stage}' while '{n}' is {s or 'pending'}.\n"
             f"The ladder is ordered. Either run {n} first, or — if it genuinely does "

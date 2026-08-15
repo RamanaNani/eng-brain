@@ -98,7 +98,7 @@
     <p class="tag">A software development lifecycle for AI coding agents — with gates that
        actually hold.</p>
     <div class="flow">
-      /story → /arch → /contract? → /slice → /fleet → <b>/before-pr</b> → /pr → /canary?
+      /story → /arch → /contract? → /slice → /fleet → /before-pr → <b>/review</b> → /pentest? → /pr → /canary?
     </div>
     <div class="cta">
       <a class="btn primary" href="#quickstart">Get started</a>
@@ -170,6 +170,8 @@ tell they are being run out of order — which is the problem the spine exists t
     <tr><td><code>slice</code></td><td><code>slices.json</code></td><td>ownership disjoint, DAG acyclic, failure modes routed</td></tr>
     <tr><td><code>fleet</code></td><td><code>FLEET.md</code></td><td>every slice green, <strong>runner output shown</strong></td></tr>
     <tr><td><code>before-pr</code></td><td><code>GATE.md</code></td><td><code>gate.py</code> passes on every slice</td></tr>
+    <tr><td><code>review</code></td><td><code>REVIEW.md</code></td><td>no scope drift either way, <code>/impeccable</code> rubric clean</td></tr>
+    <tr><td><code>pentest</code> <em>(opt)</em></td><td><code>PENTEST.md</code></td><td>no unresolved high/critical findings</td></tr>
     <tr><td><code>pr</code></td><td><code>PR.md</code></td><td>PRs opened — <strong>never merged</strong></td></tr>
     <tr><td><code>canary</code> <em>(opt)</em></td><td><code>CANARY.md</code></td><td>baseline recorded, delta non-regressive</td></tr>
   </tbody>
@@ -184,7 +186,8 @@ applicable” is a decision, and decisions are what this system exists to keep.<
   offline-sync &nbsp;·&nbsp; slice → fleet<br>
   <span class="ok">✓</span> story &nbsp;<span class="ok">✓</span> arch &nbsp;<span class="sk">–</span> contract (single repo)
   &nbsp;<span class="ok">✓</span> slice &nbsp;<span class="pend">·</span> fleet
-  &nbsp;<span class="pend">·</span> before-pr &nbsp;<span class="pend">·</span> pr &nbsp;<span class="pend">·</span> canary
+  &nbsp;<span class="pend">·</span> before-pr &nbsp;<span class="pend">·</span> review
+  &nbsp;<span class="pend">·</span> pr &nbsp;<span class="pend">·</span> canary
 </div>
 <p>State lives in the <em>target</em> repo at <code>docs/arch/&lt;feature&gt;/STATE.json</code>,
 so a feature’s position travels with its branch and survives a lost session.</p>
