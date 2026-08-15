@@ -37,58 +37,110 @@ installed skills, and the self-tests, and it tells you which step to go back to.
 
 ---
 
-## 2. Provision a brain
+## 2. Install gbrain
 
-The brain is a Postgres database with pgvector. Two options.
+The brain is [gbrain](https://github.com/garrytan/gbrain) by Garry Tan — a Postgres +
+pgvector knowledge store with a CLI. eng-brain reads and writes it; it does not reimplement
+it.
 
-### Option A — Supabase (recommended)
+```bash
+bun add github:garrytan/gbrain
+gbrain --version
+```
+
+---
+
+## 3. Pick a brain engine
+
+Four modes, and they are genuinely different trade-offs rather than four ways to do the
+same thing. Pick by how much you want to own.
+
+| Mode | Flag | Storage | API keys | Cross-machine | Good for |
+|---|---|---|---|---|---|
+| **PGLite** | `--pglite` | embedded, `~/.gbrain/brain.pglite` | none | no | trying it out, solo, offline |
+| **Supabase** | `--supabase` | your hosted Postgres | embedding key | yes | the normal choice |
+| **Custom Postgres** | `--url <uri>` | any Postgres + pgvector | embedding key | yes | you already run Postgres |
+| **Thin client** | `--mcp-only --url <https>` | someone else's brain | none locally | yes | shortcut — no DB of your own |
+
+Bare `gbrain init` picks for you: PGLite under 1000 `.md` files, Supabase at or above.
+
+### A. PGLite — zero config, fully local
+
+```bash
+gbrain init --pglite
+```
+
+No account, no keys, no network. Everything works except cross-machine sync. This is the
+honest starting point — you can move to Postgres later without redoing your work.
+
+Override the location with `--path <DIR>` if you don't want it in `~/.gbrain/`.
+
+### B. Supabase — the normal choice
+
+```bash
+gbrain init --supabase          # interactive; prompts for the connection string
+```
+
+Or non-interactively, if you already have the URI:
 
 1. Create a project at [supabase.com](https://supabase.com). Any region; free tier is fine.
-2. **Project Settings → Database → Connection string →** pick the **Transaction pooler**
-   (port **6543**). Copy it.
+2. **Project Settings → Database → Connection string →** choose the **Transaction pooler**
+   (port **6543**).
 3. Substitute your database password for `[YOUR-PASSWORD]`.
 
-You want a URI shaped like:
-
-```
-postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+```bash
+gbrain init --non-interactive \
+  --url "postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
 ```
 
 > **Take the pooler, not the direct connection.** The direct host
 > (`db.[ref].supabase.co:5432`) is IPv6-only. On an IPv4 network it fails with
-> `ECONNREFUSED`, which reads like a wrong password and sends you off checking
-> credentials that were fine. This is the single most common setup failure.
+> `ECONNREFUSED`, which reads like a wrong password and sends you off checking credentials
+> that were fine. This is the single most common setup failure.
 
-### Option B — PGLite (local, no account)
+### C. Custom Postgres — bring your own
 
 ```bash
-gbrain init --engine pglite
+gbrain init --url "postgresql://user:pass@host:5432/dbname"
 ```
 
-Everything works except cross-machine sync. Fine for trying the pipeline out; migrate to
-Postgres later with `gbrain migrate`.
+Needs the `pgvector` extension. Same shape as Supabase otherwise.
 
----
-
-## 3. Install and initialise gbrain
+### D. Thin client — use someone else's brain
 
 ```bash
-bun add github:garrytan/gbrain
+gbrain init --mcp-only --url "https://<remote-gbrain-mcp-endpoint>"
+```
 
-gbrain init --non-interactive \
-  --url "postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
+No local engine at all: gbrain becomes a client of a remote brain over MCP. This is the
+shortcut if you want the pipeline's memory without provisioning any database. The
+trade-off is that you don't own the data and you're offline when the endpoint is.
 
+### Embeddings
+
+Modes B and C want an embedding model. Defer it if you just want the pipeline working:
+
+```bash
+gbrain init --supabase --no-embedding      # add embeddings later
+gbrain init --supabase --embedding-model openai:text-embedding-3-large
+```
+
+Without embeddings you keep exact search and lose semantic recall — `gbrain think` gets
+notably weaker.
+
+### Verify, whichever you picked
+
+```bash
 gbrain doctor
 ```
 
-`doctor` should reach a health score and print `[OK] connection`. If it fails here, the
-problem is the URI — re-read the pooler warning above.
+Expect a health score and `[OK] connection`. If it fails here the problem is the URI or the
+engine choice, not eng-brain — fix it before continuing.
 
 Config lands in `~/.gbrain/config.json`.
 
-> **Security:** that file stores your database password in plaintext. If that matters for
-> your setup, put the URI in an environment variable and reference it rather than letting
-> `init` write it, and keep `~/.gbrain/` out of any backup that leaves your machine.
+> **Security:** for modes B and C that file stores your database password in plaintext.
+> Keep `~/.gbrain/` out of any backup that leaves your machine.
 
 ---
 

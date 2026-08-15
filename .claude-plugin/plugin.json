@@ -1,6 +1,6 @@
 {
   "name": "eng-brain",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Brain-grounded SDLC pipeline for Claude Code. Drive a feature through story -> arch -> contract -> slice -> fleet -> before-pr -> pr -> canary with /sdlc, which holds the state and refuses to advance past a gate that has not been shown to pass.",
   "author": {
     "name": "Ramana Nani",

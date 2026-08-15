@@ -1,6 +1,6 @@
 {
   "schema": "eng-brain.skills.lock/v1",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "files": {
     "skills/_eng-brain/bin/concepts.py": "f575fa74cb36b704d84c85edb65acd82d14329b2d2d4297f994167f554d72617",
     "skills/_eng-brain/bin/gate.py": "ce191c808195a282ef29d3086b1961a105016c431367595d03701353afa568c9",
