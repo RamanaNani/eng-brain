@@ -124,6 +124,10 @@ health: embed coverage 57.8%, missing embeddings 9832, stale pages 4164,
         orphan pages 4197, link coverage 0.0%, timeline coverage 0.0%, health score 4/10
 ```
 
+Those figures are **one example brain at one moment** — the author's, dominated by
+transcript capture. Yours will look nothing like them, and that is fine; what generalises
+is the table below, not the numbers.
+
 **Re-measure rather than trust this block.** It is a snapshot, and it goes stale fast:
 `page_count` moved 4075 → 4190 → 4220 across three sessions, because transcript capture
 runs continuously. A previous version of §8 quoted `542 pages / link_count 0` long after

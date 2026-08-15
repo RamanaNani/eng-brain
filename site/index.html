@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eng-brain — an SDLC for AI coding agents</title>
+<meta name="description" content="A software development lifecycle for AI coding agents, with gates enforced in code rather than prose. A Claude Code plugin.">
+<meta property="og:title" content="eng-brain">
+<meta property="og:description" content="An SDLC for AI coding agents — with gates that actually hold.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<style>
+  :root{
+    --bg:#fbfbfa; --fg:#1a1a19; --muted:#6b6b66; --line:#e4e4e0;
+    --card:#ffffff; --accent:#5b4bd6; --accent-soft:#efedfd;
+    --code-bg:#f5f5f3; --ok:#1f7a4d; --warn:#8a5a00;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f0f11; --fg:#e8e8e6; --muted:#9a9a95; --line:#26262a;
+      --card:#161619; --accent:#a99cf5; --accent-soft:#1d1a33;
+      --code-bg:#161619; --ok:#5fce9b; --warn:#e0b155;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f0f11; --fg:#e8e8e6; --muted:#9a9a95; --line:#26262a;
+    --card:#161619; --accent:#a99cf5; --accent-soft:#1d1a33;
+    --code-bg:#161619; --ok:#5fce9b; --warn:#e0b155;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
+       line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:0 24px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);
+       padding:.15em .4em;border-radius:4px;border:1px solid var(--line)}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;
+      padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.6}
+  pre code{background:none;border:none;padding:0}
+  h1,h2,h3{line-height:1.25;letter-spacing:-.02em}
+  h2{margin-top:3.5rem;font-size:1.5rem;padding-bottom:.4rem;border-bottom:1px solid var(--line)}
+  h3{margin-top:2.2rem;font-size:1.1rem}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;margin:1.2rem 0}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-weight:600;color:var(--muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.05em}
+  .tw{overflow-x:auto}
+
+  header{padding:72px 0 40px;border-bottom:1px solid var(--line)}
+  .badge{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--accent);
+         background:var(--accent-soft);padding:5px 11px;border-radius:100px;margin-bottom:22px}
+  h1{font-size:2.6rem;margin:0 0 .5rem}
+  .tag{font-size:1.15rem;color:var(--muted);margin:0 0 1.6rem;max-width:60ch}
+  .cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+  .btn{display:inline-block;padding:10px 18px;border-radius:8px;font-size:14.5px;font-weight:500;
+       border:1px solid var(--line)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.primary:hover{opacity:.9;text-decoration:none}
+  .btn:hover{text-decoration:none;border-color:var(--accent)}
+
+  .flow{font-family:var(--mono);font-size:13px;color:var(--muted);background:var(--card);
+        border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:26px 0;overflow-x:auto;white-space:nowrap}
+  .flow b{color:var(--fg);font-weight:600}
+
+  .note{border-left:3px solid var(--accent);background:var(--card);padding:14px 18px;
+        border-radius:0 8px 8px 0;margin:1.4rem 0;font-size:15px}
+  .note.warn{border-left-color:var(--warn)}
+  .note strong{color:var(--fg)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:1.4rem 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .card h4{margin:0 0 .4rem;font-size:14px;font-family:var(--mono);color:var(--accent)}
+  .card p{margin:0;font-size:14px;color:var(--muted)}
+
+  .lad{font-family:var(--mono);font-size:13px;white-space:nowrap;overflow-x:auto;
+       background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .ok{color:var(--ok)} .sk{color:var(--muted)} .pend{color:var(--muted);opacity:.6}
+
+  nav.toc{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);
+          padding:11px 0;z-index:10;font-size:13.5px}
+  nav.toc .wrap{display:flex;gap:20px;overflow-x:auto;white-space:nowrap}
+  nav.toc a{color:var(--muted)}
+  nav.toc a:hover{color:var(--accent)}
+
+  footer{margin-top:5rem;padding:32px 0 60px;border-top:1px solid var(--line);
+         color:var(--muted);font-size:14px}
+  @media(max-width:600px){h1{font-size:2rem}header{padding:48px 0 32px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="badge">Claude Code plugin · MIT</div>
+    <h1>eng-brain</h1>
+    <p class="tag">A software development lifecycle for AI coding agents — with gates that
+       actually hold.</p>
+    <div class="flow">
+      /story → /arch → /contract? → /slice → /fleet → <b>/before-pr</b> → /pr → /canary?
+    </div>
+    <div class="cta">
+      <a class="btn primary" href="#quickstart">Get started</a>
+      <a class="btn" href="https://github.com/RamanaNani/eng-brain">GitHub</a>
+      <a class="btn" href="https://github.com/RamanaNani/eng-brain/blob/main/docs/SETUP.md">Setup guide</a>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <a href="#quickstart">Quick start</a>
+    <a href="#why">Why</a>
+    <a href="#ladder">The ladder</a>
+    <a href="#rules">Two rules</a>
+    <a href="#brain">Brain engines</a>
+    <a href="#config">Config</a>
+    <a href="#updates">Updates</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<h2 id="quickstart">Quick start</h2>
+<p>Two lines in Claude Code. No clone, no build step.</p>
+<pre><code>/plugin marketplace add RamanaNani/eng-brain
+/plugin install eng-brain@eng-brain</code></pre>
+<p>Then drive a feature through the pipeline:</p>
+<pre><code>/sdlc build offline sync for the notes editor</code></pre>
+<p>That runs the pipeline. To give it memory, add a brain — one command, no account:</p>
+<pre><code>bun add github:garrytan/gbrain && gbrain init --pglite</code></pre>
+<div class="note">
+  <strong>It works without a brain.</strong> You lose the memory, not the pipeline.
+  Add one whenever you want decisions to carry forward.
+</div>
+
+<h2 id="why">Why this exists</h2>
+<p>Agent pipelines usually fail in one of two ways. Either every stage is a fresh start —
+the agent re-derives the architecture it settled last week — or the stages exist but nothing
+enforces them, so <em>“run the tests”</em> quietly becomes <em>“say the tests passed.”</em></p>
+
+<div class="note">
+  <strong>Gates are code, not prose.</strong> A stage cannot be marked complete out of order,
+  because <code>state.py</code> returns exit 2 and refuses. Tests cannot be declared green
+  without runner output, because <code>gate.py</code> parses that output itself and treats
+  <code>3 failed, 5 passed</code> as red.
+</div>
+
+<p>That distinction is the whole design. Prose instructions to a model are advisory — they
+compete with everything else in context, and they lose under time pressure. A non-zero exit
+code does not lose that argument.</p>
+
+<p><strong>Decisions persist.</strong> Each stage reads the brain before deciding and writes
+back after, so architecture becomes a queryable graph of decisions and the ADRs that settled
+them — rather than a directory of markdown nobody opens again.</p>
+
+<h2 id="ladder">The ladder</h2>
+<p><code>/sdlc</code> is the spine. It holds state, decides which stage runs next, and stops
+at the first failing gate. Stage skills work standalone, but invoked directly they cannot
+tell they are being run out of order — which is the problem the spine exists to fix.</p>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Stage</th><th>Produces</th><th>Gate to advance</th></tr></thead>
+  <tbody>
+    <tr><td><code>story</code></td><td><code>STORY.md</code></td><td>≥1 acceptance criterion, ≥1 negative case, ≥1 non-goal</td></tr>
+    <tr><td><code>arch</code></td><td><code>ARCHITECTURE.md</code>, <code>ADR-*.md</code></td><td>≥2 candidates weighed, ≥1 ADR, contradictions surfaced</td></tr>
+    <tr><td><code>contract</code> <em>(opt)</em></td><td><code>contracts/</code></td><td>required iff ≥2 slices share an interface</td></tr>
+    <tr><td><code>slice</code></td><td><code>slices.json</code></td><td>ownership disjoint, DAG acyclic, failure modes routed</td></tr>
+    <tr><td><code>fleet</code></td><td><code>FLEET.md</code></td><td>every slice green, <strong>runner output shown</strong></td></tr>
+    <tr><td><code>before-pr</code></td><td><code>GATE.md</code></td><td><code>gate.py</code> passes on every slice</td></tr>
+    <tr><td><code>pr</code></td><td><code>PR.md</code></td><td>PRs opened — <strong>never merged</strong></td></tr>
+    <tr><td><code>canary</code> <em>(opt)</em></td><td><code>CANARY.md</code></td><td>baseline recorded, delta non-regressive</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Optional stages must still be <em>recorded</em> as skipped, with a reason. “Not
+applicable” is a decision, and decisions are what this system exists to keep.</p>
+
+<p>Ask where anything stands:</p>
+<div class="lad">
+  offline-sync &nbsp;·&nbsp; slice → fleet<br>
+  <span class="ok">✓</span> story &nbsp;<span class="ok">✓</span> arch &nbsp;<span class="sk">–</span> contract (single repo)
+  &nbsp;<span class="ok">✓</span> slice &nbsp;<span class="pend">·</span> fleet
+  &nbsp;<span class="pend">·</span> before-pr &nbsp;<span class="pend">·</span> pr &nbsp;<span class="pend">·</span> canary
+</div>
+<p>State lives in the <em>target</em> repo at <code>docs/arch/&lt;feature&gt;/STATE.json</code>,
+so a feature’s position travels with its branch and survives a lost session.</p>
+
+<h2 id="rules">The two rules</h2>
+<p>Everything else is negotiable. These are not — and both are mechanised rather than
+trusted, because they are the rules most likely to be rationalised away in the moment.</p>
+<div class="grid">
+  <div class="card">
+    <h4>Never merge</h4>
+    <p><code>/pr</code> opens pull requests and stops. A human accepts. No
+       <code>--auto-merge</code>, no “the gate passed so I merged it.”</p>
+  </div>
+  <div class="card">
+    <h4>Never claim a green suite</h4>
+    <p>…without runner output. <code>gate.py</code> reads pytest, jest, cargo, mocha,
+       <code>node --test</code>, <code>go test</code>, TAP and <code>unittest</code>.
+       A missing file is <code>NOT RUN</code>, and that is a failure.</p>
+  </div>
+</div>
+
+<h2 id="brain">Brain engines</h2>
+<p>The brain is <a href="https://github.com/garrytan/gbrain">gbrain</a> by Garry Tan.
+Four modes, genuinely different trade-offs — pick by how much you want to own.</p>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Mode</th><th>Flag</th><th>Storage</th><th>Keys</th><th>Sync</th><th>Good for</th></tr></thead>
+  <tbody>
+    <tr><td><strong>PGLite</strong></td><td><code>--pglite</code></td><td>embedded, local</td><td>none</td><td>no</td><td>trying it out, offline</td></tr>
+    <tr><td><strong>Supabase</strong></td><td><code>--supabase</code></td><td>hosted Postgres</td><td>embedding</td><td>yes</td><td>the normal choice</td></tr>
+    <tr><td><strong>Custom PG</strong></td><td><code>--url &lt;uri&gt;</code></td><td>your Postgres</td><td>embedding</td><td>yes</td><td>you already run PG</td></tr>
+    <tr><td><strong>Thin client</strong></td><td><code>--mcp-only</code></td><td>someone else’s</td><td>none</td><td>yes</td><td>no DB of your own</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note warn">
+  <strong>Use the transaction pooler, not the direct connection.</strong> Supabase’s direct
+  host is IPv6-only. On IPv4 it fails with <code>ECONNREFUSED</code>, which reads like a wrong
+  password and sends you off checking credentials that were fine. Port <strong>6543</strong>.
+</div>
+
+<h2 id="config">Configuration</h2>
+<div class="tw">
+<table>
+  <thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>GBRAIN_PREPARE</code></td><td>—</td><td><strong>must be <code>true</code></strong>. The pooler rejects session-level prepared statements; without it queries return <em>empty results rather than an error</em>.</td></tr>
+    <tr><td><code>GBRAIN_DISABLE_DIRECT_POOL</code></td><td><code>1</code></td><td>avoids the IPv6-only direct host</td></tr>
+    <tr><td><code>ENG_BRAIN_AUTO_SYNC</code></td><td><code>1</code></td><td>clone mode: re-project skills on drift</td></tr>
+    <tr><td><code>ENG_BRAIN_NO_UPDATE_CHECK</code></td><td><code>0</code></td><td>plugin mode: disable the daily version check</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="updates">Staying current</h2>
+<p>A <code>SessionStart</code> hook keeps installs from silently rotting, and behaves
+differently by install mode because the risk profiles differ.</p>
+<div class="grid">
+  <div class="card">
+    <h4>clone</h4>
+    <p>Detects drift between repo and <code>~/.claude/skills/</code>, then re-installs
+       automatically. The projection is derived data — rebuilding it is safe and idempotent.</p>
+  </div>
+  <div class="card">
+    <h4>plugin</h4>
+    <p>Notifies only, at most once a day, when a newer version ships. Fetching code from the
+       network is not a hook’s call to make unasked.</p>
+  </div>
+</div>
+<p>It is silent when there is nothing to say. A hook that speaks every session gets ignored,
+and then it isn’t a hook — it’s noise.</p>
+
+<h2>Documentation</h2>
+<div class="tw">
+<table>
+  <tbody>
+    <tr><td><a href="https://github.com/RamanaNani/eng-brain/blob/main/docs/SETUP.md">Setup guide</a></td><td>install, all four brain engines, verification, troubleshooting</td></tr>
+    <tr><td><a href="https://github.com/RamanaNani/eng-brain/blob/main/docs/ARCHITECTURE.md">Architecture</a></td><td>how it fits together, and what it deliberately doesn’t do</td></tr>
+    <tr><td><a href="https://github.com/RamanaNani/eng-brain/blob/main/docs/adr/ADR-101-ladder-as-data.md">ADR-101</a></td><td>why gates are code rather than prose</td></tr>
+    <tr><td><a href="https://github.com/RamanaNani/eng-brain/blob/main/skills/_eng-brain/CONVENTIONS.md">Conventions</a></td><td>the brain contract every stage follows</td></tr>
+  </tbody>
+</table>
+</div>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>MIT licensed · <a href="https://github.com/RamanaNani/eng-brain">github.com/RamanaNani/eng-brain</a></p>
+    <p>Built for <a href="https://claude.com/claude-code">Claude Code</a>. Memory by
+       <a href="https://github.com/garrytan/gbrain">gbrain</a>.</p>
+  </div>
+</footer>
+
+</body>
+</html>
