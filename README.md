@@ -38,16 +38,30 @@ than a directory of markdown nobody opens again.
 
 ---
 
-## Quickstart
+## Install
+
+**As a plugin** — recommended, and what you want if you just intend to use it:
+
+```
+/plugin marketplace add RamanaNani/eng-brain
+/plugin install eng-brain@eng-brain
+```
+
+Claude Code manages the copy and a bundled hook tells you when a new version ships.
+
+**As a clone** — if you intend to modify the skills:
 
 ```bash
 git clone https://github.com/RamanaNani/eng-brain.git
 cd eng-brain
-./lib/setup.sh          # tells you exactly what's missing
-./install.sh            # projects skills into ~/.claude/skills/
+./skills/_eng-brain/setup.sh    # preflight: tells you exactly what's missing
+./install.sh                    # projects skills into ~/.claude/skills/
 ```
 
-Then in Claude Code:
+In clone mode the same hook keeps `~/.claude/skills/` in step with the repo automatically —
+edit here, and the next session picks it up.
+
+Then, in Claude Code:
 
 ```
 /sdlc build offline sync for the notes editor
@@ -110,27 +124,36 @@ moment — which is precisely why they can't live in prose.
 ## Layout
 
 ```
-skills/            one directory per skill
-  sdlc/            the spine — start here
+.claude-plugin/
+  marketplace.json  this repo IS a Claude Code marketplace
+  plugin.json       the plugin manifest
+hooks/
+  hooks.json        SessionStart wiring
+  sync.sh           keeps installs current (see "Staying current")
+skills/             everything here ships with the plugin
+  sdlc/             the spine — start here
   story/ arch/ contract/ slice/ fleet/ before-pr/ pr/ canary/
-  impeccable/      review rubric (not a stage)
-  grill-me/        adversarial design interview
+  impeccable/       review rubric (not a stage)
+  grill-me/         adversarial design interview
   brain-sync/ change/
-lib/
-  CONVENTIONS.md   the shared contract — page types, link types, read/write protocol
-  GREENFIELD.md    starting fresh
-  BROWNFIELD.md    working in an existing codebase
-  setup.sh         env + preflight (source it, or run it)
-  bin/
-    state.py       the ladder and its gates
-    gate.py        failure-mode coverage + honest test output
-    owns.py        slice file-ownership disjointness
-    concepts.py  tractable.py
+  _eng-brain/       shared library, not a skill (no SKILL.md)
+    CONVENTIONS.md  the contract — page types, link types, read/write protocol
+    GREENFIELD.md   starting fresh
+    BROWNFIELD.md   working in an existing codebase
+    setup.sh        env + preflight (source it, or run it)
+    bin/
+      state.py      the ladder and its gates
+      gate.py       failure-mode coverage + honest test output
+      owns.py       slice file-ownership disjointness
+      concepts.py  tractable.py
 docs/
-  SETUP.md         start here to install
-  ARCHITECTURE.md  how it fits together, and what it deliberately doesn't do
+  SETUP.md          start here to install
+  ARCHITECTURE.md   how it fits together, and what it deliberately doesn't do
   adr/
 ```
+
+The shared library lives *under* `skills/` rather than beside it because a plugin only
+ships its `skills` directory — anything outside it would be missing for plugin users.
 
 `/impeccable` is the review rubric — correctness, honesty of evidence, blast radius,
 reversibility. Not a ladder stage: `/before-pr` mechanises what can be mechanised, and
@@ -138,12 +161,30 @@ reversibility. Not a ladder stage: `/before-pr` mechanises what can be mechanise
 
 ---
 
+## Staying current
+
+A `SessionStart` hook keeps installs from silently rotting, and behaves differently by
+install mode because the two have different risk profiles:
+
+| Mode | Behaviour |
+|---|---|
+| **clone** | Detects that `~/.claude/skills/` drifted from the repo and **re-installs automatically**, printing one line saying so. The projection is derived data, so rebuilding it is safe and idempotent. |
+| **plugin** | **Notifies only**, at most once a day, when a newer version is on `main`. Fetching code from the network is not something a hook should do unasked. |
+
+It is silent when there is nothing to say — a hook that speaks every session gets ignored,
+and then it isn't a hook, it's noise.
+
+```bash
+ENG_BRAIN_AUTO_SYNC=0        # report drift but don't apply it
+ENG_BRAIN_NO_UPDATE_CHECK=1  # disable the version check entirely
+```
+
 ## Verifying
 
 ```bash
-./lib/setup.sh                     # full environment preflight
-./install.sh --check               # installed copy matches this repo
-python3 lib/bin/gate.py selfcheck  # must print OK
+./skills/_eng-brain/setup.sh                     # full environment preflight
+./install.sh --check                             # installed copy matches this repo
+python3 skills/_eng-brain/bin/gate.py selfcheck  # must print OK
 ```
 
 `gate.py`'s selfcheck is worth explaining, because it's load-bearing. The original
@@ -170,7 +211,7 @@ Working and in use, with known rough edges — stated plainly rather than discov
 Edit this repo, then `./install.sh`. Never edit `~/.claude/skills/` directly — it's a
 projection, and `./install.sh --check` exists to catch exactly that mistake.
 
-Before opening a PR: `./lib/setup.sh` green, `gate.py selfcheck` passing. New skills need
+Before opening a PR: `./skills/_eng-brain/setup.sh` green, `gate.py selfcheck` passing. New skills need
 a `triggers:` array in frontmatter or gbrain's resolver cannot route to them and
 `gbrain doctor` will report `UNREACHABLE`.
 

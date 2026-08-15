@@ -15,7 +15,7 @@ them. Gate enforcement had to live *somewhere*, and there were two candidates:
 
 ## Decision
 
-**Code.** `lib/bin/state.py` owns the ladder. The spine's `SKILL.md` describes *intent*
+**Code.** `skills/_eng-brain/bin/state.py` owns the ladder. The spine's `SKILL.md` describes *intent*
 and dispatches; it does not adjudicate order.
 
 Concretely:

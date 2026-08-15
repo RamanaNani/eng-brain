@@ -19,7 +19,7 @@ matters of polish:
 
 Three components, deliberately separated by what they know.
 
-### 1. The ladder, as data — `lib/bin/state.py`
+### 1. The ladder, as data — `skills/_eng-brain/bin/state.py`
 
 `STATE.json` in the target repo's `docs/arch/<feature>/`. Not in this repo: state belongs
 next to the artifacts it describes, so a feature's position survives a lost session and
@@ -45,7 +45,7 @@ adding a rung to `LADDER` in `state.py` and a skill directory, and nothing else 
 It defaults to one stage per invocation. Running the whole ladder unattended produces
 artifacts nobody reviewed, and the review points are most of the value.
 
-### 3. The gate — `lib/bin/gate.py`
+### 3. The gate — `skills/_eng-brain/bin/gate.py`
 
 Two mechanical checks: failure-mode coverage, and honest test output.
 
@@ -75,7 +75,7 @@ Layer 2 was the fragile one and is what this repo fixes.
 
 ## Brain contract
 
-Unchanged from `lib/CONVENTIONS.md`, which remains authoritative. The spine adds no brain
+Unchanged from `skills/_eng-brain/CONVENTIONS.md`, which remains authoritative. The spine adds no brain
 rules; it only ensures each stage's write-back actually happens. The rules that bite most:
 
 - `--source` is mandatory; omitting it silently files into `default`, which is the wrong

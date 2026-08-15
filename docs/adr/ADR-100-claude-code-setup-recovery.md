@@ -111,7 +111,7 @@ unescape depth. Three failure modes, in descending order of nastiness:
 
 **Select one coherent version per path — never merge bytes across write events.** A
 longest-wins merge across two extraction passes produced files that spliced two versions
-together: all four `lib/bin/*.py` scripts failed `ast.parse`, with `gate.py` carrying a
+together: all four `skills/_eng-brain/bin/*.py` scripts failed `ast.parse`, with `gate.py` carrying a
 duplicated `_PASS_COUNTS` block and a comment truncated mid-sentence. Correct approach:
 keep every candidate payload intact, rank newest-then-longest, and take the first that
 passes a structural check for its type (`ast.parse` for `.py`, `json.loads` for `.json`,

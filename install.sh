@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # Project this repo's skills into ~/.claude/skills.
 #
-# gbrain ships its own 53 skills inside its npm package and has no projector of
-# its own; these are a separate layer that lived only in ~/.claude/skills and was
-# lost once. This script is that layer's installer, so it never depends on
-# transcript archaeology again.
+# Only needed for a local clone. If you installed via the plugin marketplace,
+# Claude Code manages the copy and you never run this.
 #
 #   ./install.sh            install
 #   ./install.sh --check    verify installed copies match this repo, change nothing
@@ -16,31 +14,30 @@ TARGET="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 LOCK="$REPO/skills.lock.json"
 MODE="${1:-install}"
 
+# _recovered/ holds partially-recovered originals kept for provenance. They are
+# not runnable and must never be projected.
+files() { find "$REPO/skills" -type f ! -path '*/_recovered/*' ! -name '*.pyc' | sort; }
 hash_file() { shasum -a 256 "$1" | awk '{print $1}'; }
 
-gen_lock() {
-  {
-    echo '{'
-    echo "  \"schema\": \"eng-brain.skills.lock/v1\","
-    echo "  \"version\": \"$(cat "$REPO/VERSION")\","
-    echo '  "files": {'
-    first=1
-    while IFS= read -r f; do
-      rel="${f#$REPO/}"
-      [ $first -eq 1 ] || echo ','
-      first=0
-      printf '    "%s": "%s"' "$rel" "$(hash_file "$f")"
-    done < <(find "$REPO/skills" "$REPO/lib" -type f \
-               ! -path '*/_recovered/*' ! -name '*.pyc' | sort)
-    echo
-    echo '  }'
-    echo '}'
-  } > "$LOCK"
-  echo "wrote $LOCK ($(grep -c '": "' "$LOCK") files)"
-}
-
 case "$MODE" in
-  --lock) gen_lock; exit 0 ;;
+  --lock)
+    {
+      echo '{'
+      echo "  \"schema\": \"eng-brain.skills.lock/v1\","
+      echo "  \"version\": \"$(cat "$REPO/VERSION")\","
+      echo '  "files": {'
+      first=1
+      while IFS= read -r f; do
+        [ $first -eq 1 ] || echo ','
+        first=0
+        printf '    "%s": "%s"' "${f#$REPO/}" "$(hash_file "$f")"
+      done < <(files)
+      echo
+      echo '  }'
+      echo '}'
+    } > "$LOCK"
+    echo "wrote $LOCK ($(files | wc -l | tr -d ' ') files)"
+    ;;
 
   --check)
     fail=0
@@ -52,17 +49,7 @@ case "$MODE" in
       elif [ "$(hash_file "$f")" != "$(hash_file "$dest")" ]; then
         echo "DIFFERS  $rel"; fail=1
       fi
-    done < <(find "$REPO/skills" -type f ! -name '*.pyc' | sort)
-    # the shared library is projected as the _eng-brain skill
-    while IFS= read -r f; do
-      rel="${f#$REPO/lib/}"
-      dest="$TARGET/_eng-brain/$rel"
-      if [ ! -f "$dest" ]; then
-        echo "MISSING  _eng-brain/$rel"; fail=1
-      elif [ "$(hash_file "$f")" != "$(hash_file "$dest")" ]; then
-        echo "DIFFERS  _eng-brain/$rel"; fail=1
-      fi
-    done < <(find "$REPO/lib" -type f ! -path '*/_recovered/*' ! -name '*.pyc' | sort)
+    done < <(files)
     [ $fail -eq 0 ] && echo "in sync with $TARGET"
     exit $fail
     ;;
@@ -76,15 +63,11 @@ case "$MODE" in
       cp -R "$d" "$TARGET/$name"
       n=$((n + 1))
     done
-    # shared library projects as _eng-brain so CONVENTIONS.md resolves for every stage
-    rm -rf "${TARGET:?}/_eng-brain"
-    mkdir -p "$TARGET/_eng-brain"
-    cp -R "$REPO/lib/." "$TARGET/_eng-brain/"
-    rm -rf "$TARGET/_eng-brain/_recovered"
+    rm -rf "$TARGET/_eng-brain/bin/_recovered"
     find "$TARGET" -name '*.py' -path '*/bin/*' -exec chmod +x {} \; 2>/dev/null || true
     find "$TARGET" -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
-    echo "installed $n skills + shared library -> $TARGET"
-    echo "run './install.sh --check' to verify"
+    echo "installed $n skills -> $TARGET"
+    echo "verify with: ./install.sh --check"
     ;;
 
   *) echo "usage: install.sh [install|--check|--lock]" >&2; exit 1 ;;

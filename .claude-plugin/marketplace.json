@@ -1,0 +1,37 @@
+{
+  "name": "eng-brain",
+  "owner": {
+    "name": "Ramana Nani",
+    "url": "https://github.com/RamanaNani"
+  },
+  "metadata": {
+    "description": "A software development lifecycle for AI coding agents, with gates that hold.",
+    "version": "2.1.0"
+  },
+  "plugins": [
+    {
+      "name": "eng-brain",
+      "source": "./",
+      "version": "2.1.0",
+      "description": "Brain-grounded SDLC pipeline: story -> arch -> contract -> slice -> fleet -> before-pr -> pr -> canary. Stage order and gates are enforced in code rather than prose, so a stage cannot be marked complete out of order and a test suite cannot be declared green without runner output. Architectural decisions are written back to gbrain so the next feature inherits them.",
+      "author": {
+        "name": "Ramana Nani",
+        "url": "https://github.com/RamanaNani"
+      },
+      "homepage": "https://github.com/RamanaNani/eng-brain",
+      "repository": "https://github.com/RamanaNani/eng-brain",
+      "license": "MIT",
+      "keywords": [
+        "sdlc",
+        "pipeline",
+        "architecture",
+        "code-review",
+        "gbrain",
+        "agents",
+        "worktree",
+        "adr"
+      ],
+      "category": "workflow"
+    }
+  ]
+}

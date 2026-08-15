@@ -13,7 +13,7 @@ Steps 5–7 are what make it remember.
 | Tool | Why | Install |
 |---|---|---|
 | **bun** | runs gbrain | `curl -fsSL https://bun.sh/install \| bash` |
-| **python3** ≥ 3.9 | `lib/bin/*.py` | preinstalled on macOS; else python.org |
+| **python3** ≥ 3.9 | `skills/_eng-brain/bin/*.py` | preinstalled on macOS; else python.org |
 | **git** | everything | preinstalled |
 | **Claude Code** | invokes the skills | `npm i -g @anthropic-ai/claude-code` |
 | **gh** *(optional)* | `/pr` opens PRs | `brew install gh && gh auth login` |
@@ -28,10 +28,10 @@ covers a local alternative if you'd rather not use a hosted DB.
 ```bash
 git clone https://github.com/RamanaNani/eng-brain.git
 cd eng-brain
-./lib/setup.sh          # preflight — expect failures until you finish Step 6
+./skills/_eng-brain/setup.sh          # preflight — expect failures until you finish Step 6
 ```
 
-`lib/setup.sh` is the source of truth for whether your environment is right. Run it
+`skills/_eng-brain/setup.sh` is the source of truth for whether your environment is right. Run it
 whenever something behaves oddly; it checks the toolchain, the brain, the env vars, the
 installed skills, and the self-tests, and it tells you which step to go back to.
 
@@ -94,12 +94,26 @@ Config lands in `~/.gbrain/config.json`.
 
 ## 4. Install the skills
 
+### Option A — plugin (recommended)
+
+Nothing to clone, and updates are handled for you:
+
+```
+/plugin marketplace add RamanaNani/eng-brain
+/plugin install eng-brain@eng-brain
+```
+
+This repo doubles as a Claude Code marketplace — `.claude-plugin/marketplace.json` at the
+root is what makes that work. Skip to Step 5.
+
+### Option B — clone (if you'll modify the skills)
+
 ```bash
 ./install.sh            # projects into ~/.claude/skills/
 ./install.sh --check    # verify the installed copy matches this repo
 ```
 
-This installs 13 skills plus the shared `_eng-brain` library.
+This installs 13 skills plus the shared `_eng-brain` library. If you installed via the plugin marketplace instead, skip this step entirely — Claude Code manages the copy.
 
 **Edit this repo, never `~/.claude/skills/` directly.** The installed copy is a
 projection; `--check` exists to catch the case where someone edited the projection and is
@@ -158,13 +172,13 @@ which is the wrong repo and will not sync — silently.
 
 ```bash
 cd /path/to/eng-brain
-./lib/setup.sh
+./skills/_eng-brain/setup.sh
 ```
 
 Every line should be green. Then:
 
 ```bash
-python3 lib/bin/gate.py selfcheck    # must print OK
+python3 skills/_eng-brain/bin/gate.py selfcheck    # must print OK
 gbrain doctor                        # resolver_health should report all skills reachable
 ```
 
@@ -200,7 +214,7 @@ re-copy them after every gbrain upgrade or they silently go stale.
 
 **`gbrain: command not found`**
 `~/.bun/bin` is not on PATH. Non-login shells (including the one Claude Code's agents run
-in) do not pick up your profile. `source lib/setup.sh` fixes it for the current shell.
+in) do not pick up your profile. `source skills/_eng-brain/setup.sh` fixes it for the current shell.
 
 **Searches return nothing and the brain "looks empty"**
 Almost always `GBRAIN_PREPARE`. Check `echo $GBRAIN_PREPARE` — it must be `true`. Treat an
