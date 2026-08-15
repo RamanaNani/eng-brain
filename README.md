@@ -1,93 +1,184 @@
 # eng-brain
 
-A brain-grounded SDLC pipeline for Claude Code. One feature goes in at `/sdlc`, and comes
-out as reviewed PRs — with every architectural decision written back to gbrain so the next
-feature inherits it.
+**A software development lifecycle for AI coding agents, with gates that actually hold.**
 
-## Why this repo exists
+One feature goes in at `/sdlc` and comes out as reviewed pull requests — through story,
+architecture, contracts, slicing, parallel implementation, and gating. Every architectural
+decision is written back to a knowledge brain, so the *next* feature inherits what the
+last one learned instead of rediscovering it.
 
-These skills lived only in `~/.claude/skills/` and were lost on 2026-08-15 when a restart
-wiped the directory. They were recovered from gbrain transcript pages, which happened to
-embed the original tool-call payloads. That worked, but it should never be the plan.
-
-This repo is the plan. `install.sh` projects it into `~/.claude/skills/`; `--check`
-verifies the installed copy still matches.
-
-See `docs/ARCHITECTURE.md` for the design and `../docs/analysis/ADR-100-*.md` for the
-recovery post-mortem.
-
-## Install
-
-```bash
-./install.sh          # project skills into ~/.claude/skills
-./install.sh --check  # verify installed copies match this repo
-./install.sh --lock   # regenerate skills.lock.json
-```
-
-Requires `gbrain` on `PATH` (`~/.bun/bin`) and `GBRAIN_PREPARE=true` exported — see
-`lib/CONVENTIONS.md` §7.
-
-## The ladder
+Built for [Claude Code](https://claude.com/claude-code). 13 skills, ~2500 lines.
 
 ```
 /story → /arch → /contract? → /slice → /fleet → /before-pr → /pr → /canary?
 ```
 
-Drive it with **`/sdlc`**, which holds the state and the gates. The stage skills still work
-standalone, but invoked directly they cannot tell they are being run out of order.
+---
+
+## The idea
+
+Agent pipelines usually fail in one of two ways. Either every stage is a fresh start —
+the agent re-derives the architecture it settled last week — or the stages exist but
+nothing enforces them, so "run the tests" quietly becomes "say the tests passed."
+
+eng-brain addresses both, and the second one is the interesting half:
+
+**Gates are code, not prose.** A stage cannot be marked complete out of order, because
+`state.py` returns exit 2 and refuses. Tests cannot be declared green without runner
+output, because `gate.py` parses the output itself and treats `3 failed, 5 passed` as red.
+
+That distinction is the whole design. Prose instructions to a model are advisory — they
+compete with everything else in context and they lose to time pressure. A non-zero exit
+code does not lose that argument. See
+[ADR-101](docs/adr/ADR-101-ladder-as-data.md) for the reasoning.
+
+**Decisions persist.** Each stage reads the brain before deciding and writes back after.
+Architecture becomes a queryable graph of decisions and the ADRs that settled them, rather
+than a directory of markdown nobody opens again.
+
+---
+
+## Quickstart
+
+```bash
+git clone https://github.com/RamanaNani/eng-brain.git
+cd eng-brain
+./lib/setup.sh          # tells you exactly what's missing
+./install.sh            # projects skills into ~/.claude/skills/
+```
+
+Then in Claude Code:
+
+```
+/sdlc build offline sync for the notes editor
+```
+
+Full instructions, including provisioning the brain, are in **[docs/SETUP.md](docs/SETUP.md)**.
+Requires `bun`, `python3`, and a Postgres database (Supabase free tier is plenty). It runs
+without a brain too — you just lose the memory, not the pipeline.
+
+---
+
+## The ladder
+
+`/sdlc` is the spine. It holds the state, decides which stage runs next, and stops at the
+first failing gate. The stage skills work standalone, but invoked directly they cannot
+tell they're being run out of order — which is exactly the problem the spine exists to fix.
 
 | Stage | Produces | Gate to advance |
 |---|---|---|
 | `story` | `STORY.md` | ≥1 acceptance criterion, ≥1 negative case, ≥1 non-goal |
 | `arch` | `ARCHITECTURE.md`, `ADR-*.md` | ≥2 candidates weighed, ≥1 ADR, contradictions surfaced |
-| `contract` *(opt)* | `contracts/` | required iff ≥2 slices share an interface |
-| `slice` | `slices.json` | ownership disjoint, DAG acyclic, failure modes routed |
-| `fleet` | `FLEET.md` | every slice green, runner output shown |
+| `contract` *(optional)* | `contracts/` | required iff ≥2 slices share an interface |
+| `slice` | `slices.json` | file ownership disjoint, DAG acyclic, failure modes routed |
+| `fleet` | `FLEET.md` | every slice green, **runner output shown** |
 | `before-pr` | `GATE.md` | `gate.py` passes on every slice |
 | `pr` | `PR.md` | PRs opened — **never merged** |
-| `canary` *(opt)* | `CANARY.md` | baseline recorded, delta non-regressive |
+| `canary` *(optional)* | `CANARY.md` | baseline recorded, delta non-regressive |
 
-State lives in `docs/arch/<feature>/STATE.json` in the *target* repo, so it travels with
-the artifacts and survives a lost session.
+Optional stages must still be *recorded* as skipped, with a reason. "Not applicable" is a
+decision, and decisions are the thing this system exists to keep.
+
+State lives in the **target** repo at `docs/arch/<feature>/STATE.json`, so a feature's
+position travels with its branch and survives a lost session.
+
+```
+$ /sdlc where is offline-sync
+
+offline-sync  ·  slice → fleet
+  ✓ story  ✓ arch  – contract (single repo)  ✓ slice  · fleet  · before-pr  · pr  · canary
+```
+
+---
+
+## The two rules
+
+Everything else is negotiable. These are not, and both are mechanised rather than trusted:
+
+**Never merge.** `/fleet` opens pull requests and stops. A human accepts. There is no
+`--auto-merge` and no "the gate passed so I merged it."
+
+**Never claim a green suite without runner output.** `gate.py testout` understands pytest,
+jest, cargo, mocha, `node --test`, `go test`, TAP, and `unittest`. A missing output file is
+`NOT RUN`, and `NOT RUN` is a failure.
+
+Both rules exist because they're the ones most likely to be rationalised away in the
+moment — which is precisely why they can't live in prose.
+
+---
 
 ## Layout
 
 ```
-skills/          one directory per skill, each with SKILL.md
-  sdlc/          the spine — start here
+skills/            one directory per skill
+  sdlc/            the spine — start here
+  story/ arch/ contract/ slice/ fleet/ before-pr/ pr/ canary/
+  impeccable/      review rubric (not a stage)
+  grill-me/        adversarial design interview
+  brain-sync/ change/
 lib/
-  CONVENTIONS.md the shared contract: page types, link types, read/write protocol
-  GREENFIELD.md  / BROWNFIELD.md
+  CONVENTIONS.md   the shared contract — page types, link types, read/write protocol
+  GREENFIELD.md    starting fresh
+  BROWNFIELD.md    working in an existing codebase
+  setup.sh         env + preflight (source it, or run it)
   bin/
-    state.py     the ladder + gates (has --help)
-    gate.py      failure-mode coverage + honest test output (has selfcheck)
-    owns.py      slice file-ownership disjointness
-    concepts.py  / tractable.py
-    _recovered/  partially-recovered originals, kept for provenance
+    state.py       the ladder and its gates
+    gate.py        failure-mode coverage + honest test output
+    owns.py        slice file-ownership disjointness
+    concepts.py  tractable.py
 docs/
-  ARCHITECTURE.md
+  SETUP.md         start here to install
+  ARCHITECTURE.md  how it fits together, and what it deliberately doesn't do
   adr/
 ```
 
-## Standards
-
 `/impeccable` is the review rubric — correctness, honesty of evidence, blast radius,
-reversibility. It is not a ladder stage; `/before-pr` mechanises the parts that can be
-mechanised and `/impeccable` covers the rest.
+reversibility. Not a ladder stage: `/before-pr` mechanises what can be mechanised, and
+`/impeccable` covers the rest, where a human still has to look.
 
-Two rules the whole system rests on:
+---
 
-- **Never merge a PR.** `/pr` opens and stops. A human accepts.
-- **Never claim tests pass without runner output.** `gate.py testout` treats
-  `3 failed, 5 passed` as red, and treats a missing output file as NOT RUN.
-
-## Verifying the tools
+## Verifying
 
 ```bash
-python3 lib/bin/gate.py selfcheck   # must print OK
-python3 lib/bin/state.py --help
+./lib/setup.sh                     # full environment preflight
+./install.sh --check               # installed copy matches this repo
+python3 lib/bin/gate.py selfcheck  # must print OK
 ```
 
-`gate.py`'s selfcheck is inherited from the original implementation and pins exact
-behaviour *and* exact diagnostic wording. It is the reason the rebuilt implementation can
-be trusted — run it after any edit.
+`gate.py`'s selfcheck is worth explaining, because it's load-bearing. The original
+`gate.py` was partially lost; its test suite survived but its implementation did not. The
+implementation here was rebuilt to satisfy that suite, which pins exact behaviour *and*
+exact diagnostic wording — several checks share an exit code, so only the message
+distinguishes "the file was empty" from "the file was unparseable," and the operator needs
+to know which. Run it after any edit to that file.
+
+---
+
+## Status
+
+Working and in use, with known rough edges — stated plainly rather than discovered later:
+
+- `owns.py`, `concepts.py`, and `tractable.py` are recovered and parse, but have no
+  selfcheck the way `gate.py` does. Treat their output as informative, not authoritative.
+- `before-pr`, `canary`, and `impeccable` are newly written and have not yet been run
+  against a real feature end to end.
+- No CI. `./install.sh --check` and `gate.py selfcheck` should gate every commit.
+
+## Contributing
+
+Edit this repo, then `./install.sh`. Never edit `~/.claude/skills/` directly — it's a
+projection, and `./install.sh --check` exists to catch exactly that mistake.
+
+Before opening a PR: `./lib/setup.sh` green, `gate.py selfcheck` passing. New skills need
+a `triggers:` array in frontmatter or gbrain's resolver cannot route to them and
+`gbrain doctor` will report `UNREACHABLE`.
+
+## Provenance
+
+These skills were lost on 2026-08-15 when `~/.claude/skills/` was wiped, and recovered
+verbatim from gbrain transcript pages that happened to embed the original tool-call
+payloads. That worked, and it should never have been the plan. This repo is the plan.
+
+The recovery post-mortem — including the chunk-overlap trap that corrupts naive
+reassembly — is written up in `ADR-100`.

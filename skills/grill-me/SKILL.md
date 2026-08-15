@@ -1,6 +1,18 @@
 ---
 name: grill-me
+version: 2.0.0
 description: Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. Use when user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
+triggers:
+  - "grill me"
+  - "stress-test this plan"
+  - "poke holes in this"
+  - "interview me about this design"
+  - "challenge my assumptions"
+allowed-tools:
+  - AskUserQuestion
+  - Read
+  - Grep
+  - Glob
 ---
 
 Interview the user relentlessly about every aspect of their plan until you reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one.
