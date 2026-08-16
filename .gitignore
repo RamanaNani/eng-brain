@@ -15,3 +15,9 @@ __pycache__/
 # Partially-recovered originals: provenance only, not runnable. install.sh
 # strips them for clone users; gitignore keeps them off the plugin channel too.
 /skills/_eng-brain/bin/_recovered/
+
+# Local agent session state written into the repo by the tools themselves.
+# Machine-specific and sometimes credential-bearing — never part of a clone.
+/.claude/
+/.claude-flow/
+/.serena/

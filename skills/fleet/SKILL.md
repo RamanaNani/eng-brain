@@ -58,6 +58,10 @@ MANIFEST="$ARCH_DIR/slices.json"
 TARGET=$(python3 -c "import json;print(json.load(open('$MANIFEST'))['source_branch'])")
 
 # Preflight — every one of these must pass before a single worktree is created.
+# Worktree isolation derives from the SESSION cwd, not from $REPO_ROOT. If they differ,
+# every agent in the wave silently builds against the wrong repo. Assert, do not assume.
+CWD_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+[ "$CWD_ROOT" = "$REPO_ROOT" ] || { echo "BLOCKED: session cwd repo ($CWD_ROOT) != REPO_ROOT ($REPO_ROOT) — cd \"$REPO_ROOT\" and re-run"; exit 1; }
 git diff --quiet && git diff --cached --quiet || { echo "BLOCKED: uncommitted changes"; exit 1; }
 git rev-parse --verify "$TARGET" >/dev/null 2>&1 || { echo "BLOCKED: target branch $TARGET missing"; exit 1; }
 python3 "$ENG_BRAIN/bin/owns.py" "$MANIFEST" "$REPO_ROOT" || { echo "BLOCKED: slice ownership collision"; exit 1; }
@@ -93,11 +97,16 @@ const built = await pipeline(
     `You are building ONE slice in an isolated git worktree.\n\n` +
     `Read the brief at ${args.repoRoot}/docs/arch/${args.feature}/${s.brief} and implement it.\n\n` +
     `HARD RULES:\n` +
+    `0. FIRST command, before reading anything: \`git rev-parse --path-format=absolute --git-common-dir\`.\n` +
+    `   It MUST be ${args.repoRoot}/.git — your worktree path differs, its git dir must not.\n` +
+    `   Anything else means you are bound to the WRONG REPO: change nothing, return blocked with that path.\n` +
     `1. Write ONLY files matching: ${s.owns.join(', ')}. Another agent owns everything else RIGHT NOW.\n` +
     `2. Write real tests covering every edge case the brief lists. Run them. Paste the runner output.\n` +
     `3. Update docs for what you changed and WHY.\n` +
     `4. Commit on branch ${s.branch}. Do NOT merge. Do NOT open a PR.\n` +
-    `5. If the brief is wrong or you must touch a file you do not own, STOP and report it.\n\n` +
+    `5. If the brief is wrong or you must touch a file you do not own, STOP and report it.\n` +
+    `6. NEVER run \`git stash\`. Worktrees have separate working dirs but share refs/stash —\n` +
+    `   your stash would clobber a sibling agent's. Commit to ${s.branch} instead.\n\n` +
     `Return JSON: {slice, files_written, tests_run, tests_passed, test_output, docs_updated, blocked, blocker}`,
     // agentType comes from /slice Phase 3.5 — the specialist matched to what this slice
     // touches, defaulting to eng-brain's own roster when no specialist plugin is installed.
