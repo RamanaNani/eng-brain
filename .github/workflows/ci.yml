@@ -1,0 +1,122 @@
+name: ci
+
+# The gates guard the pipeline; this guards the gates. Every push and PR re-runs each
+# gate's own selfcheck, so a change that breaks gate.py's honesty (or coverage.py's, or
+# owns.py's) fails here instead of in someone's real feature.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: gate selfchecks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Every bin script parses
+        run: |
+          for f in skills/_eng-brain/bin/*.py; do
+            python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$f"
+            echo "  parse ok: $f"
+          done
+
+      - name: gate.py selfcheck
+        run: python3 skills/_eng-brain/bin/gate.py selfcheck
+
+      - name: coverage.py selfcheck
+        run: python3 skills/_eng-brain/bin/coverage.py selfcheck
+
+      - name: owns.py selfcheck
+        run: python3 skills/_eng-brain/bin/owns.py --selfcheck
+
+      - name: concepts.py selfcheck
+        run: python3 skills/_eng-brain/bin/concepts.py --selfcheck
+
+      - name: tractable.py selfcheck
+        run: python3 skills/_eng-brain/bin/tractable.py --selfcheck
+
+  manifests:
+    name: manifests + agents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: JSON manifests are valid
+        run: |
+          for j in .claude-plugin/plugin.json .claude-plugin/marketplace.json skills.lock.json; do
+            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$j"
+            echo "  json ok: $j"
+          done
+
+      - name: Versions agree across plugin.json, marketplace.json, VERSION
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, sys
+          v_file = pathlib.Path("VERSION").read_text().strip()
+          v_plugin = json.load(open(".claude-plugin/plugin.json"))["version"]
+          mp = json.load(open(".claude-plugin/marketplace.json"))
+          v_mp_meta = mp["metadata"]["version"]
+          v_mp_plugin = mp["plugins"][0]["version"]
+          seen = {v_file, v_plugin, v_mp_meta, v_mp_plugin}
+          print("versions:", {"VERSION": v_file, "plugin.json": v_plugin,
+                               "marketplace.metadata": v_mp_meta, "marketplace.plugin": v_mp_plugin})
+          sys.exit(0 if len(seen) == 1 else "version mismatch across manifests")
+          PY
+
+      - name: Every agent has valid frontmatter (name matches file, tools + description present)
+        run: |
+          python3 - <<'PY'
+          import re, sys, pathlib
+          bad = []
+          for f in sorted(pathlib.Path("agents").glob("*.md")):
+              body = re.sub(r'^<!--.*?-->\n', '', f.read_text(), flags=re.S)
+              m = re.match(r'---\n(.*?)\n---\n', body, re.S)
+              if not m:
+                  bad.append(f"{f.name}: no frontmatter"); continue
+              fm = m.group(1)
+              name = re.search(r'^name:\s*(\S+)', fm, re.M)
+              if not (name and name.group(1) == f.stem): bad.append(f"{f.name}: name != filename")
+              if not re.search(r'^tools:\s*\S', fm, re.M): bad.append(f"{f.name}: no tools")
+              if not re.search(r'^description:', fm, re.M): bad.append(f"{f.name}: no description")
+              print(f"  agent ok: {f.stem}")
+          sys.exit("; ".join(bad) if bad else 0)
+          PY
+
+      - name: Every skill has a triggers array (gbrain resolver requires it)
+        run: |
+          python3 - <<'PY'
+          import re, sys, pathlib
+          bad = []
+          for skill in sorted(pathlib.Path("skills").glob("*/SKILL.md")):
+              fm = re.match(r'---\n(.*?)\n---\n', skill.read_text(), re.S)
+              if not fm:
+                  bad.append(f"{skill.parent.name}: no frontmatter"); continue
+              if not re.search(r'^triggers:', fm.group(1), re.M):
+                  bad.append(f"{skill.parent.name}: no triggers array")
+              else:
+                  print(f"  skill ok: {skill.parent.name}")
+          sys.exit("; ".join(bad) if bad else 0)
+          PY
+
+  shell:
+    name: shell scripts parse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n on every shell script
+        run: |
+          find . -name '*.sh' -not -path './skills/pentest/upstream/*' -print0 \
+            | xargs -0 -I{} bash -n {} && echo "all shell scripts parse"

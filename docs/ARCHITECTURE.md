@@ -85,9 +85,27 @@ rules; it only ensures each stage's write-back actually happens. The rules that 
 - `GBRAIN_PREPARE=true` must be exported — the pooler rejects session-level prepared
   statements and the failure mode is an *empty result set rather than an error*.
 
+## The doers: agents
+
+The gates decide; the skills conduct; **agents do**. eng-brain ships six typed subagents
+(`agents/`) whose tools are their guardrails — a `slice-reviewer` has no `Write`, so it
+cannot fix what it reviews; an `architect` has no `Write`, so a design candidate cannot
+smuggle in an implementation. This is the same "don't trust the prompt to hold a line the
+runtime can hold" argument as the gates, applied to agents. See
+[AGENTS.md](AGENTS.md) and [ADR-103](adr/ADR-103-agent-roster-tools-as-guardrails.md).
+
+## Requirements traceability
+
+A third mechanical gate joined the two above: `coverage.py` proves every acceptance
+criterion in `STORY.md` (each with a stable `AC-<n>` id) reaches a slice's `covers`. It is
+what makes "loop until the requirements are satisfied" a checkable exit rather than an
+assertion — a criterion is done only when a slice claims it *and* that slice is green. See
+[ADR-102](adr/ADR-102-requirements-traceability.md).
+
 ## What this does not do
 
-- **It does not merge.** `/pr` opens PRs and stops.
+- **It does not merge.** `/pr` opens PRs and stops; `/fleet` assembles onto integration and
+  stops.
 - **It does not decide whether a design is good.** `/arch` weighs candidates; a human
   accepts. The gates check that the work was *done and evidenced*, not that it was wise.
 - **It does not run stages unattended by default.** Batching is available on request and
@@ -95,9 +113,11 @@ rules; it only ensures each stage's write-back actually happens. The rules that 
 
 ## Open
 
-- `owns.py`, `concepts.py`, and `tractable.py` were recovered and parse, but are not yet
-  exercised by a selfcheck the way `gate.py` is. Until they are, treat their output as
-  informative rather than authoritative.
-- `canary`, `before-pr`, and `impeccable` are newly written to fill recovered gaps. They
-  have not yet been run against a real feature.
-- No CI. `./install.sh --check` and `gate.py selfcheck` should run on every commit.
+- **All six gate tools are self-checked**, and CI (`.github/workflows/ci.yml`) runs every
+  selfcheck on each push. The recovery-era gap of "recovered but unverified" tools is closed.
+- `concepts.py` resolves a slice's owned files against the primary repo only; a slice whose
+  files live in a *secondary* repo of a multi-repo feature is not yet fully checked.
+- `gate.py modes` matches failure modes by substring, so use full-phrase mode names (the
+  `/arch` sweep produces these).
+- `canary`, `before-pr`, and `impeccable` have been exercised in pieces but not yet driven
+  against a large multi-repo feature end to end.

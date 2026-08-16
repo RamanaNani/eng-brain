@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "A software development lifecycle for AI coding agents, with gates that hold.",
-    "version": "2.4.0"
+    "version": "3.0.0"
   },
   "plugins": [
     {
       "name": "eng-brain",
       "source": "./",
-      "version": "2.4.0",
+      "version": "3.0.0",
       "description": "Brain-grounded SDLC pipeline: story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary?. Stage order and gates are enforced in code rather than prose, so a stage cannot be marked complete out of order and a test suite cannot be declared green without runner output. Architectural decisions are written back to gbrain so the next feature inherits them.",
       "author": {
         "name": "Ramana Nani",

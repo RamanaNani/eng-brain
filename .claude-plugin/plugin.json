@@ -1,7 +1,7 @@
 {
   "name": "eng-brain",
-  "version": "2.4.0",
-  "description": "Brain-grounded SDLC pipeline for Claude Code. Drive a feature through story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary? with /sdlc, which holds the state and refuses to advance past a gate that has not been shown to pass.",
+  "version": "3.0.0",
+  "description": "Brain-grounded SDLC pipeline for Claude Code. Drive a feature through story -> arch -> contract? -> slice -> fleet -> before-pr -> review -> pentest? -> pr -> deploy? -> canary? with /sdlc, which holds the state and refuses to advance past a gate that has not been shown to pass. Ships a roster of typed subagents whose tools are their guardrails.",
   "author": {
     "name": "Ramana Nani",
     "url": "https://github.com/RamanaNani"
@@ -18,5 +18,6 @@
     "code-review"
   ],
   "skills": "./skills",
+  "agents": "./agents",
   "hooks": "./hooks/hooks.json"
 }

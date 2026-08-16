@@ -62,6 +62,28 @@ On failure it names the exact mode and where to put it. Do not "cover" a mode by
 its text into a brief — either the slice genuinely tests it, or it is genuinely out of
 scope with a reason. Pasting to satisfy a grep is how the gate stops meaning anything.
 
+## Phase 1.5 — Requirements coverage
+
+`gate.py modes` proves the *failure modes* reach a brief. This proves the *acceptance
+criteria* reach a slice — the other half of "did we build what was asked":
+
+```bash
+python3 "$ENG_BRAIN/bin/coverage.py" map "$ARCH_DIR"
+```
+
+It fails if any `AC-<n>` in `STORY.md` is claimed by no slice's `covers` (a requirement
+nobody built), or if a slice claims a criterion the story does not define (a typo or a
+deleted criterion). This is the mechanical form of the check `/review` also does by hand —
+running it here, before review, means review attention is never spent discovering a whole
+requirement was skipped.
+
+Coverage is a *mapping* check: it proves each criterion is some slice's job. Phase 2 proves
+that slice is green. A criterion is only truly satisfied when both hold — its slice claims
+it **and** that slice's tests ran and passed — so a green `coverage.py map` over red slices
+is not done. That combination is exactly what lets `/sdlc` loop a feature until every
+requirement is both built and proven, instead of stopping when the work merely feels
+finished.
+
 ## Phase 2 — Test output, per slice
 
 Every slice must have produced real runner output. Collect it, do not assert it:

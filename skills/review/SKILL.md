@@ -59,10 +59,19 @@ belongs to no slice is either scope creep or a missed `contract` — both are fi
 python3 "$ENG_BRAIN/bin/owns.py" "$ARCH_DIR/slices.json" "$REPO_ROOT" || exit 1
 ```
 
-**Asked for but not built.** Walk `STORY.md`'s acceptance criteria one at a time and locate
-the code that satisfies each. A criterion with no implementation is the failure mode that
-mechanical gates structurally cannot catch: the tests that exist all pass, and the test that
-should exist was never written.
+**Asked for but not built.** `/before-pr` already ran `coverage.py map`, which proves every
+`AC-<n>` is *claimed* by a slice. Re-run it here as your starting point:
+
+```bash
+python3 "$ENG_BRAIN/bin/coverage.py" map "$ARCH_DIR"
+```
+
+But a green map is necessary, not sufficient — it proves a slice *claimed* the criterion,
+not that the code *honours* it. So walk `STORY.md`'s acceptance criteria one at a time and
+locate the actual code that satisfies each. A criterion whose slice claims it but whose
+implementation is a stub, or asserts the wrong thing, passes `coverage.py` and still fails
+the user. That gap — claimed-but-not-honoured — is the one mechanical gates structurally
+cannot catch, and it is what this human read is for.
 
 Report both as a table, with the specific file or criterion — never as a summary:
 

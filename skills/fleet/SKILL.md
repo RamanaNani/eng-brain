@@ -8,7 +8,6 @@ triggers:
   - build the slices
   - execute the plan
   - run the fleet
-  - fleet accept
 allowed-tools:
   - Bash
   - Read
@@ -21,10 +20,10 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# /fleet — parallel worktrees, gated, PR-only
+# /fleet — parallel worktrees, gated, integration-only
 
 Stage 5 of 11. `/arch` decided. `/slice` divided. `/fleet` builds — in parallel,
-in isolated worktrees, and **it never merges**.
+in isolated worktrees, and **it never merges and never opens a PR**.
 
 **Read `$ENG_BRAIN/CONVENTIONS.md` first.**
 
@@ -61,8 +60,10 @@ TARGET=$(python3 -c "import json;print(json.load(open('$MANIFEST'))['source_bran
 # Preflight — every one of these must pass before a single worktree is created.
 git diff --quiet && git diff --cached --quiet || { echo "BLOCKED: uncommitted changes"; exit 1; }
 git rev-parse --verify "$TARGET" >/dev/null 2>&1 || { echo "BLOCKED: target branch $TARGET missing"; exit 1; }
-gh auth status >/dev/null 2>&1 || { echo "BLOCKED: gh not authenticated"; exit 1; }
 python3 "$ENG_BRAIN/bin/owns.py" "$MANIFEST" "$REPO_ROOT" || { echo "BLOCKED: slice ownership collision"; exit 1; }
+# gh is not needed here — /fleet assembles locally and pushes nothing. It is only a
+# warning, so a local build is not blocked; /pr enforces gh auth as a hard gate later.
+gh auth status >/dev/null 2>&1 || echo "note: gh not authenticated — fine for /fleet, but /pr will need it"
 echo "preflight OK — target=$TARGET"
 ```
 
@@ -98,9 +99,10 @@ const built = await pipeline(
     `4. Commit on branch ${s.branch}. Do NOT merge. Do NOT open a PR.\n` +
     `5. If the brief is wrong or you must touch a file you do not own, STOP and report it.\n\n` +
     `Return JSON: {slice, files_written, tests_run, tests_passed, test_output, docs_updated, blocked, blocker}`,
-    // agentType comes from /slice Phase 3.5 — the specialist matched to what this slice touches.
+    // agentType comes from /slice Phase 3.5 — the specialist matched to what this slice
+    // touches, defaulting to eng-brain's own roster when no specialist plugin is installed.
     { label: `build:${s.id}`, phase: 'Build', isolation: 'worktree',
-      agentType: s.agents?.build || 'software-developer', schema: BUILD_SCHEMA }
+      agentType: s.agents?.build || 'eng-brain:slice-implementer', schema: BUILD_SCHEMA }
   ),
   (r, s) => (r?.blocked || !r?.tests_passed) ? r : parallel([
     () => agent(`Adversarially review the diff on branch ${s.branch} for slice ${s.id}. ` +
@@ -108,11 +110,12 @@ const built = await pipeline(
                 `swallowed exceptions, files written outside ${s.owns.join(', ')}. ` +
                 `Report only defects you can point at a line for.`,
                 { label: `review:${s.id}`, phase: 'Verify',
-                  agentType: s.agents?.review || 'ecc:code-reviewer', schema: REVIEW_SCHEMA }),
-    () => agent(`Verify slice ${s.id}'s tests actually exercise the brief's edge cases. ` +
+                  agentType: s.agents?.review || 'eng-brain:slice-reviewer', schema: REVIEW_SCHEMA }),
+    () => agent(`Verify slice ${s.id}'s tests actually exercise the brief's edge cases ` +
+                `and the acceptance criteria it covers (${(s.covers || []).join(', ') || 'none'}). ` +
                 `A test that asserts nothing, or only the happy path, is a FAIL. Return {adequate, gaps[]}.`,
                 { label: `tests:${s.id}`, phase: 'Verify',
-                  agentType: s.agents?.test || 'ecc:tdd-guide', schema: TESTGATE_SCHEMA }),
+                  agentType: s.agents?.test || 'eng-brain:test-auditor', schema: TESTGATE_SCHEMA }),
   ]).then(([review, tests]) => ({ ...r, review, tests }))
 )
 return built.filter(Boolean)
@@ -120,6 +123,18 @@ return built.filter(Boolean)
 
 Use `pipeline`, not `parallel` between stages — a slice that finishes building should
 start its review immediately rather than waiting for its slowest sibling.
+
+### The bounded fix loop
+
+A slice that comes back red or blocked is not the end of the wave — it is one turn of a
+loop with a hard stop. Feed the failure **verbatim** (the runner output, the reviewer's
+findings, the blocker) back to a fresh `slice-implementer` for that slice and re-run its
+gate. Cap it: **at most 3 build attempts per slice.** After the third, stop looping and
+mark the slice `blocked` with the last failure recorded — a slice that will not go green in
+three tries has a wrong brief or a wrong cut, and the fix is to re-slice or re-brief, not to
+spend a fourth agent. Never lift the cap to "just get it green": an unbounded fix loop is
+how a pipeline burns a day thrashing on one slice. The loop's exit is the *gate*, never the
+agent's own sense that it is done.
 
 ## Phase 2 — The gate
 
@@ -145,54 +160,45 @@ through; report it and let the user decide.
 A slice that fails any gate does **not** push. Report it as failed with the reason, and
 keep going with the rest of the wave — one bad slice must not block three good ones.
 
-## Phase 3 — Push and open PRs
+## Phase 3 — Assemble onto the integration branch
 
-For each slice that passed all four gates:
+`/fleet` does **not** open pull requests — that is `/pr`, stage 9, after `/before-pr` and
+`/review` have passed. What it does here is assemble every passing slice onto a single
+integration branch, so the next stages have one coherent diff to gate and review.
 
 ```bash
-git -C "$WT" push -u origin "$BRANCH"
-gh pr create \
-  --base "$TARGET" \
-  --head "$BRANCH" \
-  --title "$FEATURE_SLUG/$SLICE_ID: $SLICE_NAME" \
-  --body "$(cat <<EOF
-Implements slice $SLICE_ID of \`docs/arch/$FEATURE_SLUG/ARCHITECTURE.md\`.
+INTEGRATION="integration/$FEATURE_SLUG"
+git rev-parse --verify "$INTEGRATION" >/dev/null 2>&1 || git branch "$INTEGRATION" "$TARGET"
 
-## What changed
-<from the agent's report>
-
-## Tests
-\`\`\`
-<actual runner output>
-\`\`\`
-
-## Edge cases covered
-<from the brief, each with its test>
-
-## Files (all within slice ownership)
-<git diff --name-only>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-EOF
-)"
+# For each slice that passed all four gates, fast-forward its work onto integration.
+for BRANCH in "${PASSED_BRANCHES[@]}"; do
+  git -C "$REPO_ROOT" checkout "$INTEGRATION"
+  git -C "$REPO_ROOT" merge --no-ff "$BRANCH" -m "assemble $BRANCH into $INTEGRATION" \
+    || { echo "ASSEMBLY CONFLICT on $BRANCH — ownership gate missed a collision; re-cut"; exit 1; }
+done
 ```
 
-Then set `status: "pr_open"` on that slice in `slices.json` and commit the manifest.
+A merge conflict here is not something to hand-resolve into another slice's files — it means
+the ownership gate missed a collision, and the answer is to re-cut, per rule #1's spirit.
+Then set `status: "assembled"` on each passing slice in `slices.json` and commit the
+manifest.
 
-**Stop here.** Do not merge.
+`integration/<feature>` stays local until `/pr`. Nothing is pushed and no PR is opened here.
+
+**Stop here.** Do not merge, do not push, do not open a PR.
 
 ## Phase 4 — Report and hand back
 
 ```
 Fleet: <feature> wave 1 of 3
 
-  ✓ 01-sync-schema       PR #241 → dev   12 tests, 4 edge cases   docs ✓
-  ✓ 02-conflict-resolver PR #242 → dev    9 tests, 6 edge cases   docs ✓
-  ✗ 03-api-layer         BLOCKED — needed src/types.ts (owned by 01)
+  ✓ 01-sync-schema       assembled → integration/<feature>   12 tests, 4 edge cases, AC-1 AC-4   docs ✓
+  ✓ 02-conflict-resolver assembled → integration/<feature>    9 tests, 6 edge cases, AC-2 AC-3   docs ✓
+  ✗ 03-api-layer         BLOCKED (3 attempts) — needed src/types.ts (owned by 01)
 
-2 PRs open against dev. Nothing merged.
+2 slices assembled onto integration/<feature>. Nothing pushed, no PR, nothing merged.
 
-Next: /before-pr    (gate), then /review, then /pr
+Next: /before-pr    (gate), then /review, then /pr opens the PR — a human merges.
 Slice 03 needs a re-cut — its brief assumed ownership it does not have.
 ```
 
@@ -219,6 +225,7 @@ python3 "$ENG_BRAIN/bin/state.py" pass "$ARCH_DIR" --stage fleet --artifact FLEE
 |---|---|---|
 | Merge conflict between slices | ownership collision `/slice` missed | Re-run `owns.py`; re-cut. Never hand-resolve into another slice's files. |
 | Agent reports tests pass, no output | it did not run them | Gate requires pasted runner output. Fail it. |
-| PR targets the wrong branch | read the current branch instead of the manifest | `TARGET` comes from `slices.json.source_branch`, always |
-| Wave 2 built against stale interfaces | wave 1 PRs not merged before wave 2 started | Waves are barriers; wave 2 starts only after wave 1 is accepted |
-| Worktree left behind | `--accept` interrupted | `git worktree list` then `git worktree remove <path>` |
+| Integration built against the wrong base | read the current branch instead of the manifest | `TARGET` comes from `slices.json.source_branch`, always |
+| Wave 2 built against stale interfaces | wave 1 not assembled onto integration before wave 2 started | Waves are barriers; wave 2 starts only after wave 1 is assembled and green |
+| Slice thrashes without going green | wrong brief or wrong cut, not a fixable slice | The fix loop caps at 3 attempts; then re-slice or re-brief — do not lift the cap |
+| Worktree left behind | a wave interrupted mid-run | `git worktree list` then `git worktree remove <path>` |

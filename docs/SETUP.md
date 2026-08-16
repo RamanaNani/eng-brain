@@ -230,9 +230,13 @@ cd /path/to/eng-brain
 Every line should be green. Then:
 
 ```bash
-python3 skills/_eng-brain/bin/gate.py selfcheck    # must print OK
+python3 skills/_eng-brain/bin/gate.py     selfcheck   # honest test-output parsing
+python3 skills/_eng-brain/bin/coverage.py selfcheck   # requirements traceability
+python3 skills/_eng-brain/bin/owns.py     --selfcheck # ownership disjointness
 gbrain doctor                        # resolver_health should report all skills reachable
 ```
+
+All six gate tools carry a selfcheck; CI runs every one on each push.
 
 In Claude Code, `/sdlc` should now appear. Ask it where a feature stands:
 

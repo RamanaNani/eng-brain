@@ -17,7 +17,7 @@ allowed-tools:
   - Glob
   - Grep
   - Skill
-  - Task
+  - Agent
 ---
 
 # /sdlc — the spine
@@ -43,9 +43,9 @@ this skill adds sequencing, not new brain rules.
 | 1 | `story` | `STORY.md` | ≥1 acceptance criterion, ≥1 negative case, ≥1 non-goal |
 | 2 | `arch` | `ARCHITECTURE.md` | ≥2 candidates weighed, 1 recommended, ≥1 ADR written, contradictions surfaced |
 | 3 | `contract` *(optional)* | `contracts/` | required iff the feature spans ≥2 repos |
-| 4 | `slice` | `slices.json` | file ownership disjoint (`owns.py`), DAG acyclic, every failure mode lands in a slice or Out of scope (`gate.py`) |
+| 4 | `slice` | `slices.json` | file ownership disjoint (`owns.py`), DAG acyclic, every failure mode lands in a slice or Out of scope (`gate.py`), **every `AC-<n>` mapped to a slice's `covers`** |
 | 5 | `fleet` | `FLEET.md` | every slice green, **runner output shown** |
-| 6 | `before-pr` | `GATE.md` | `gate.py` passes on every slice |
+| 6 | `before-pr` | `GATE.md` | `gate.py` passes on every slice **and `coverage.py` confirms every acceptance criterion reached a green slice** |
 | 7 | `review` | `REVIEW.md` | no scope drift either direction, `/impeccable` rubric applied |
 | 8 | `pentest` *(optional)* | `PENTEST.md` | no unresolved high/critical findings |
 | 9 | `pr` | `PR.md` | PRs opened. **Never merged.** |

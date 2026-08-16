@@ -65,15 +65,34 @@ def load(arch_dir):
     p = path_of(arch_dir)
     if not os.path.exists(p):
         sys.exit(f"no STATE.json at {p} — run: state.py init {arch_dir} --feature <slug>")
-    with open(p) as f:
-        return json.load(f)
+    try:
+        with open(p) as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        # A corrupt STATE.json used to surface as a raw traceback, which reads like a
+        # bug in this tool rather than a damaged file the operator can fix or restore.
+        sys.exit(f"STATE.json at {p} is not valid JSON ({e}). It may be corrupt — restore "
+                 f"it from git, or re-init with: state.py init {arch_dir} --feature <slug> --force")
 
 
 def save(arch_dir, st):
+    # Write-and-rename so an interrupted write can never leave a half-written STATE.json.
+    # os.replace is atomic on the same filesystem, so a reader either sees the old file
+    # or the new one, never a truncated one — this file is the whole point of surviving
+    # a lost session, so it must not be the thing a crash corrupts.
     os.makedirs(arch_dir, exist_ok=True)
-    with open(path_of(arch_dir), "w") as f:
-        json.dump(st, f, indent=2)
-        f.write("\n")
+    final = path_of(arch_dir)
+    tmp = f"{final}.tmp.{os.getpid()}"
+    try:
+        with open(tmp, "w") as f:
+            json.dump(st, f, indent=2)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, final)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
 
 
 def cmd_init(a):

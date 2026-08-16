@@ -134,6 +134,13 @@ gh pr create --base "$TARGET" --head "$BRANCH" \
 PR_URL=$(gh pr view --json url -q .url)
 ```
 
+Record the gate so `/sdlc` knows the PR is open and `/deploy` can pick up after a human
+merges:
+
+```bash
+python3 "$ENG_BRAIN/bin/state.py" pass "$ARCH_DIR" --stage pr --artifact PR.md --note "$PR_URL"
+```
+
 Write the PR number into `slices.json` at the top level (`"pr": 251`), commit the manifest,
 and write to the brain:
 

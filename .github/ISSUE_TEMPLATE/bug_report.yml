@@ -1,0 +1,69 @@
+name: Bug report
+description: Something in the pipeline behaved wrongly — a gate that let bad code through, a stage that misbehaved, an install problem.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. If this is a **security** issue (e.g. a gate reporting a false
+        green, or `/pentest` touching an out-of-scope host), do not file it here — see
+        [SECURITY.md](../../blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `cat VERSION`, or the plugin version.
+      placeholder: "3.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install channel
+      options:
+        - Plugin (/plugin install)
+        - Clone (./install.sh)
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part
+      options:
+        - A gate script (state.py / gate.py / owns.py / concepts.py / coverage.py / tractable.py)
+        - A stage skill (/story, /arch, /slice, /fleet, ...)
+        - An agent (slice-implementer, slice-reviewer, ...)
+        - Install / sync / hooks
+        - gbrain integration
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you run, and what did it do?
+      placeholder: |
+        `/before-pr` passed even though slice 02's tests were red.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: If a gate is involved, the exact runner output or manifest that triggered it is the most useful thing you can paste.
+      render: shell
+  - type: textarea
+    id: selfcheck
+    attributes:
+      label: Selfcheck output (if a gate is involved)
+      description: "Paste the output of the relevant selfcheck, e.g. `python3 skills/_eng-brain/bin/gate.py selfcheck`."
+      render: shell

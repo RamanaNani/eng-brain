@@ -1,0 +1,47 @@
+name: Feature request
+description: Propose a new stage, gate, agent, or capability.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        eng-brain has a strong opinion: **gates are code, agents do, scripts decide**. A
+        proposal lands best when it fits that shape — a new *checkable* gate, a new agent with a
+        clear tool-guardrail, a new stage with a real artifact. Proposals for personas that chat
+        with each other are a hard no ([ADR-103](../../blob/main/docs/adr/ADR-103-agent-roster-tools-as-guardrails.md)).
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What can't the pipeline do today, or what does it do wrongly?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: The proposal
+      description: What you'd add or change.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of thing is this
+      options:
+        - A new gate (something checkable in code)
+        - A new agent (a doer with a tool guardrail)
+        - A new stage on the ladder
+        - A change to an existing stage/gate
+        - Docs / DX
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: gate
+    attributes:
+      label: If it's a gate — how would a script decide pass/fail?
+      description: The exit condition. If a human has to judge it, it's a review step, not a gate.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

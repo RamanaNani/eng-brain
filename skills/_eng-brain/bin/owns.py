@@ -89,6 +89,25 @@ def bare_dirs(patterns, root):
 def main(manifest_path, root):
     slices = json.load(open(manifest_path))["slices"]
 
+    # Duplicate ids are a silent false green: `resolved` is keyed by id, so a second
+    # slice named "02" overwrites the first's file set — and then every collision the
+    # first slice had with any OTHER slice is computed against the wrong files and
+    # missed. Ids are also branch names and state keys downstream, so a duplicate is
+    # malformed regardless. Refuse it before it can hide anything.
+    seen = {}
+    dupes = []
+    for s in slices:
+        sid = s["id"]
+        seen[sid] = seen.get(sid, 0) + 1
+        if seen[sid] == 2:
+            dupes.append(sid)
+    if dupes:
+        for sid in dupes:
+            print(f"DUPLICATE ID {sid!r}: defined on {seen[sid]} slices. Slice ids must be "
+                  f"unique — they key ownership, branch names and ladder state.")
+        print("OWNERSHIP: FAIL")
+        return 1
+
     resolved = {}
     for s in slices:
         resolved[s["id"]] = resolve(s["owns"], root)
@@ -214,6 +233,15 @@ def selfcheck():
         {"id": "02", "name": "api", "owns": ["src/api/**", "src/models/user.ts"]},
     ], empty)
     assert (code, last) == (0, "OWNERSHIP: OK"), "a realistic disjoint cut must pass"
+
+    # Duplicate ids must FAIL, not silently pass: the id-keyed resolve() would let the
+    # second "01" overwrite the first's file set and hide the first's real collisions.
+    code, last = run([
+        {"id": "01", "name": "a", "owns": ["src/a/**"]},
+        {"id": "01", "name": "b", "owns": ["src/b/**"]},
+    ], empty)
+    assert (code, last) == (1, "OWNERSHIP: FAIL"), \
+        "two slices sharing an id must be refused before ownership can be miscomputed"
 
     # A bare directory is refused rather than silently passed. Before this check,
     # these two slices printed "OWNERSHIP: OK" and called 01 a new-file slice.

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/RamanaNani/eng-brain/security/advisories/new
+    about: Report a security issue privately — do not open a public issue. See SECURITY.md.
+  - name: Question or idea (discussion)
+    url: https://github.com/RamanaNani/eng-brain/discussions
+    about: For open-ended questions and ideas that aren't yet a bug or a concrete proposal.

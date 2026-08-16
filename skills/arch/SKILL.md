@@ -142,6 +142,24 @@ costs, and its failure mode. Then **one recommendation with the reason**.
 An option set where two options are obviously bad is a fake choice — cut it to one and
 say "this is the only sensible shape, here's why."
 
+For a feature with a genuinely wide solution space, generate the candidates **independently
+and in parallel** rather than writing option 2 as a variation on option 1 — a lone author
+anchors on the first idea and the rest drift toward it. Dispatch the `architect` agent
+several times, each from a different angle, in one message:
+
+```
+Agent(subagent_type: "eng-brain:architect")  angle: "minimise blast radius"
+Agent(subagent_type: "eng-brain:architect")  angle: "least new infrastructure"
+Agent(subagent_type: "eng-brain:architect")  angle: "optimise the common read path"
+```
+
+Each returns an approach, its cost, its one-way doors, and its own failure mode, blind to
+the others. You then synthesise: recommend the strongest, and graft the best idea from each
+runner-up. The `architect` agent is **read-only** — it cannot write code, so a "candidate"
+can never quietly become half an implementation you are then reluctant to discard. For a
+small or obvious feature, skip the fan-out and write the options directly; the ladder
+applies to `/arch` too.
+
 Call out explicitly:
 - what this makes hard to change later (the one-way doors)
 - where it contradicts a prior decision from Phase 1
@@ -264,9 +282,9 @@ gbrain tag "projects/$FEATURE_SLUG" eng-brain
 gbrain tag "projects/$FEATURE_SLUG" architecture
 ```
 
-Note: other skills in this library (`investigate`, `retro`, `qa`) use `gbrain put` for
-their write-back. `capture` is the newer single entrypoint and handles slug/type/disk
-routing in one call — prefer it here, but both write real pages.
+Note: `/story` and `/contract` write their pages with `gbrain call put_page` (it reports the
+edge count, which `capture` does not). `capture` is the newer single entrypoint and handles
+slug/type/disk routing in one call — prefer it here in `/arch`, but both write real pages.
 
 Verify the edges landed rather than assuming:
 
@@ -279,7 +297,14 @@ no edges is invisible to `gbrain think`, which means the next `/arch` will not f
 
 ## Phase 6 — Gate
 
-Stop. Present:
+Record the gate so `/sdlc` can advance and a resumed session knows this stage is done:
+
+```bash
+python3 "$ENG_BRAIN/bin/state.py" pass "$ARCH_DIR" --stage arch --artifact ARCHITECTURE.md
+```
+
+If that reports no `STATE.json`, the ladder was never started — run `/story` (or `/sdlc`)
+first. Then stop and present:
 
 ```
 Architecture: <feature>

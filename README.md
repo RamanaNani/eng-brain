@@ -5,6 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-6b4fbb)](https://claude.com/claude-code)
 [![Skills](https://img.shields.io/badge/skills-17-green.svg)](skills/)
+[![Agents](https://img.shields.io/badge/agents-6-green.svg)](agents/)
+[![CI](https://github.com/RamanaNani/eng-brain/actions/workflows/ci.yml/badge.svg)](https://github.com/RamanaNani/eng-brain/actions/workflows/ci.yml)
 
 One feature goes in at `/sdlc` and comes out as reviewed pull requests — through story,
 architecture, contracts, slicing, parallel implementation, and gating. Every architectural
@@ -77,14 +79,19 @@ than a directory of markdown nobody opens again.
 | `/brain-sync` | manual brain sync + health delta |
 | `/change` | change requests against an existing system |
 
-**Five tools** under `skills/_eng-brain/bin/`:
+**Six gate tools** under `skills/_eng-brain/bin/`, each with its own `selfcheck`:
 
 | Tool | What it does |
 |---|---|
-| `state.py` | the ladder and its gates — refuses out-of-order and unjustified skips |
+| `state.py` | the ladder and its gates — refuses out-of-order and unjustified skips; writes `STATE.json` atomically |
 | `gate.py` | failure-mode coverage + honest test-output parsing across 8 runners |
-| `owns.py` | proves no two slices own the same file |
-| `concepts.py`, `tractable.py` | scope and decomposability checks |
+| `coverage.py` | requirements traceability — every acceptance criterion must reach a slice |
+| `owns.py` | proves no two slices own the same file (and refuses duplicate slice ids) |
+| `concepts.py` | proves shared types/enums a slice widens are owned by that slice |
+| `tractable.py` | refuses to hand an agent a file too large to edit safely |
+
+**A roster of six agents** under `agents/` — the pipeline's doers, whose tools are their
+guardrails (a reviewer with no `Write` can't fix what it reviews). See [docs/AGENTS.md](docs/AGENTS.md).
 
 **A shared contract** — `skills/_eng-brain/CONVENTIONS.md` — covering brain page types, link
 types, and the read/write protocol every stage follows.
@@ -102,9 +109,9 @@ being run out of order — which is the problem the spine exists to fix.
 | `story` | `STORY.md` | ≥1 acceptance criterion, ≥1 negative case, ≥1 non-goal |
 | `arch` | `ARCHITECTURE.md`, `ADR-*.md` | ≥2 candidates weighed, ≥1 ADR, contradictions surfaced |
 | `contract` *(opt)* | `contracts/` | required iff the feature spans ≥2 repos |
-| `slice` | `slices.json` | ownership disjoint, DAG acyclic, failure modes routed |
-| `fleet` | `FLEET.md` | every slice green, **runner output shown** |
-| `before-pr` | `GATE.md` | `gate.py` passes on every slice |
+| `slice` | `slices.json` | ownership disjoint, DAG acyclic, failure modes routed, **every AC mapped to a slice** |
+| `fleet` | `FLEET.md` | every slice built + cross-reviewed, **runner output shown**, assembled onto integration |
+| `before-pr` | `GATE.md` | `gate.py` + `coverage.py` pass on every slice |
 | `review` | `REVIEW.md` | no scope drift either way, `/impeccable` rubric clean |
 | `pentest` *(opt)* | `PENTEST.md` | no unresolved high/critical findings |
 | `pr` | `PR.md` | PRs opened — **never merged** |
@@ -192,11 +199,14 @@ cd eng-brain
 
 > **Pick one, not both.** Installing the plugin *and* running `./install.sh` registers every
 > skill twice and makes resolution ambiguous. Switching from clone to plugin? Remove the
-> projected copies first:
+> projected copies first (skills and agents):
 > ```bash
 > for s in sdlc story arch contract slice fleet before-pr review pentest pr deploy canary rollback \
 >          impeccable grill-me brain-sync change _eng-brain; do
 >   rm -rf ~/.claude/skills/$s
+> done
+> for a in slice-implementer slice-reviewer test-auditor architect security-tester devops-advisor; do
+>   rm -f ~/.claude/agents/$a.md
 > done
 > ```
 
@@ -238,11 +248,15 @@ it isn't a hook, it's noise.
 ## Verifying
 
 ```bash
-./skills/_eng-brain/setup.sh                     # full environment preflight
-./install.sh --check                             # installed copy matches this repo
-python3 skills/_eng-brain/bin/gate.py selfcheck  # must print OK
-gbrain doctor                                    # brain health + skill reachability
+./skills/_eng-brain/setup.sh                          # full environment preflight
+./install.sh --check                                  # installed skills + agents match this repo
+python3 skills/_eng-brain/bin/gate.py     selfcheck   # honest test-output parsing
+python3 skills/_eng-brain/bin/coverage.py selfcheck   # requirements traceability
+python3 skills/_eng-brain/bin/owns.py     --selfcheck # ownership disjointness
+gbrain doctor                                         # brain health + skill reachability
 ```
+
+CI runs every gate's selfcheck on each push — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 `gate.py`'s selfcheck is load-bearing and worth explaining. The original `gate.py` was
 partially lost; its test suite survived but its implementation didn't. The implementation
@@ -265,6 +279,9 @@ for s in sdlc story arch contract slice fleet before-pr review pentest pr deploy
          impeccable grill-me brain-sync change _eng-brain; do
   rm -rf ~/.claude/skills/$s
 done
+for a in slice-implementer slice-reviewer test-auditor architect security-tester devops-advisor; do
+  rm -f ~/.claude/agents/$a.md
+done
 ```
 
 Neither touches your brain or your `docs/arch/` artifacts. To remove the brain too:
@@ -276,11 +293,16 @@ Neither touches your brain or your `docs/arch/` artifacts. To remove the brain t
 
 | Doc | What's in it |
 |---|---|
+| [docs/PIPELINE.md](docs/PIPELINE.md) | the full lifecycle end to end, and the loop model (L0–L4) |
+| [docs/AGENTS.md](docs/AGENTS.md) | the agent roster — who they are, what they can't do, how they're dispatched |
 | [docs/SETUP.md](docs/SETUP.md) | install, all four brain engines, verification, troubleshooting |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | how it fits together, and what it deliberately doesn't do |
+| [ADR-103](docs/adr/ADR-103-agent-roster-tools-as-guardrails.md) | why the agent roster, and tools as guardrails |
+| [ADR-102](docs/adr/ADR-102-requirements-traceability.md) | why requirements are traced, not trusted |
 | [ADR-101](docs/adr/ADR-101-ladder-as-data.md) | why gates are code rather than prose |
 | [ADR-100](docs/adr/ADR-100-claude-code-setup-recovery.md) | the recovery post-mortem this repo came out of |
 | `skills/_eng-brain/CONVENTIONS.md` | the brain contract every stage follows |
+| [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md) · [SECURITY.md](SECURITY.md) | contributing, release history, disclosure |
 
 ---
 
@@ -288,19 +310,22 @@ Neither touches your brain or your `docs/arch/` artifacts. To remove the brain t
 
 ```
 .claude-plugin/     marketplace.json + plugin.json — this repo IS a marketplace
+.github/            CI workflow + issue/PR templates
+agents/             the six-agent roster — projected to ~/.claude/agents/
 hooks/              SessionStart wiring + sync.sh
 skills/             everything here ships with the plugin
   sdlc/             the spine — start here
-  story/ arch/ contract/ slice/ fleet/ before-pr/ pr/ canary/
-  impeccable/ grill-me/ brain-sync/ change/
+  story/ arch/ contract/ slice/ fleet/ before-pr/ review/ pentest/ pr/ deploy/ canary/
+  impeccable/ grill-me/ brain-sync/ change/ rollback/
   _eng-brain/       shared library, not a skill (no SKILL.md)
     CONVENTIONS.md  GREENFIELD.md  BROWNFIELD.md  setup.sh
-    bin/            state.py  gate.py  owns.py  concepts.py  tractable.py
-docs/               SETUP, ARCHITECTURE, adr/
+    bin/            state.py  gate.py  coverage.py  owns.py  concepts.py  tractable.py
+docs/               PIPELINE, AGENTS, SETUP, ARCHITECTURE, adr/
 ```
 
 The shared library lives *under* `skills/` because a plugin ships only its `skills`
-directory — anything outside it would be missing for plugin users.
+directory — anything outside it would be missing for plugin users. Agents are the exception:
+`plugin.json` declares `"agents": "./agents"` so the roster ships alongside the skills.
 
 ---
 
@@ -308,20 +333,27 @@ directory — anything outside it would be missing for plugin users.
 
 Working and in use, with known rough edges — stated plainly rather than discovered later:
 
-- `owns.py`, `concepts.py`, and `tractable.py` parse and are recovered, but have no
-  selfcheck the way `gate.py` does. Treat their output as informative, not authoritative.
-- `before-pr`, `canary`, and `impeccable` are newly written and haven't yet been run against
-  a real feature end to end.
-- No CI. `./install.sh --check` and `gate.py selfcheck` should gate every commit.
+- **All six gate tools are self-checked.** `gate.py`, `coverage.py`, `owns.py`, `concepts.py`,
+  and `tractable.py` each ship a `selfcheck`, and CI runs all of them on every push.
+- `before-pr`, `canary`, and `impeccable` have been exercised in pieces but not yet driven
+  against a large multi-repo feature end to end. Treat the multi-repo path as the least-worn.
+- `concepts.py` resolves a slice's owned files against the primary repo only; a slice whose
+  files live in a *secondary* repo of a multi-repo feature is not yet fully checked. Single-repo
+  features are unaffected.
+- `gate.py modes` matches a failure mode against brief text by substring, so a very short mode
+  name could match unintended text. Use descriptive, full-phrase failure modes (the `/arch`
+  sweep produces these) and it is a non-issue.
 
 ## Contributing
 
-Edit this repo, then `./install.sh`. Never edit `~/.claude/skills/` directly — it's a
-projection, and `./install.sh --check` exists to catch exactly that mistake.
+Edit this repo, then `./install.sh`. Never edit `~/.claude/skills/` or `~/.claude/agents/`
+directly — they're projections, and `./install.sh --check` exists to catch exactly that
+mistake. Before opening a PR: all six gate selfchecks passing, `./install.sh --check` clean,
+preflight green — the same checks CI runs.
 
-Before opening a PR: preflight green, `gate.py selfcheck` passing. New skills need a
-`triggers:` array in frontmatter, or gbrain's resolver can't route to them and
-`gbrain doctor` reports `UNREACHABLE`.
+Full guide, including the rule that a gate change isn't done until its selfcheck proves it:
+**[CONTRIBUTING.md](CONTRIBUTING.md)**. By participating you agree to the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Provenance
 

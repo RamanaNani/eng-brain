@@ -88,10 +88,15 @@ rejected here rather than at `/qa`.
 
 | # | Given / when / then | How it is proven |
 |---|---|---|
-| A1 | Given a coach with 40 clients, when they open one, then the last three sessions render | `pnpm test coach-context.spec.ts` |
-| A2 | Given no prior sessions, when they open a client, then an empty state appears, not a spinner | `pnpm test coach-context.spec.ts -t empty` |
+| AC-1 | Given a coach with 40 clients, when they open one, then the last three sessions render | `pnpm test coach-context.spec.ts` |
+| AC-2 | Given no prior sessions, when they open a client, then an empty state appears, not a spinner | `pnpm test coach-context.spec.ts -t empty` |
 
 Rules:
+- **Every criterion has a stable id in the first column — `AC-1`, `AC-2`, …** These are
+  not decoration. `/slice` records which slice covers each id, and `coverage.py` fails
+  the pre-PR gate if any criterion reaches no slice — so an id here is the thread that
+  proves the requirement was actually built, not just tested around. Number them once
+  and never renumber; a slice may already point at `AC-3`.
 - Every criterion names a command, a manual step, or a metric with a threshold.
 - "It works" and "it's fast" are rejected. "p95 under 400ms, measured by X" passes.
 - Include at least one **negative** criterion: what must NOT happen. Agents
@@ -117,6 +122,8 @@ Write `$ARCH_DIR/STORY.md`:
 
 ## Acceptance criteria
 | # | Given / when / then | How it is proven |
+|---|---|---|
+| AC-1 | ... | ... |
 
 ## Explicitly out of scope
 - ...
@@ -130,11 +137,30 @@ Write `$ARCH_DIR/STORY.md`:
 
 **Gate — all must hold before `/arch` may run:**
 
+- [ ] Every acceptance criterion has a stable `AC-<n>` id in the first column
 - [ ] Every acceptance criterion has a proof command or a measured threshold
 - [ ] At least one negative criterion exists
 - [ ] The out-of-scope list is non-empty
 - [ ] No table, module, library, or file name appears anywhere in STORY.md
 - [ ] gbrain was queried and the result recorded, even if empty
+
+The `AC-<n>` ids are what `coverage.py` reads three stages later. A criterion with no
+id cannot be traced to a slice, so it silently drops out of the requirements gate — the
+one failure this whole system exists to make impossible.
+
+When the gate passes, record it. `/story` is stage 1, so it **bootstraps the ladder** —
+it creates `STATE.json` if `/sdlc` has not already:
+
+```bash
+STATE="$ENG_BRAIN/bin/state.py"
+[ -f "$ARCH_DIR/STATE.json" ] \
+  || python3 "$STATE" init "$ARCH_DIR" --feature "$FEATURE_SLUG" --branch "$SOURCE_BRANCH"
+python3 "$STATE" pass "$ARCH_DIR" --stage story --artifact STORY.md
+```
+
+Recording is what lets `/sdlc` advance and what makes a resumed session know this stage
+is done. A stage that does its work but never records it leaves the ladder stuck on a rung
+that is actually complete.
 
 Then **stop**. Print the story and the gate result, and hand back for review. Do
 not chain into `/arch`.

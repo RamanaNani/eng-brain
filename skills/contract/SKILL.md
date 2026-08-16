@@ -136,6 +136,17 @@ to `contracts/` in **both** repos.
 - [ ] Deploy order and the backward-compatibility window are stated
 - [ ] `slices.json` in each repo records `"contracts": "<path to CONTRACTS.md>"`
 
+When every box holds, record the gate so `/sdlc` can advance:
+
+```bash
+python3 "$ENG_BRAIN/bin/state.py" pass "$ARCH_DIR" --stage contract --artifact CONTRACTS.md
+```
+
+`contract` is optional — a single-repo feature skips it with a reason instead
+(`state.py skip "$ARCH_DIR" --stage contract --why "single repo"`), which `/slice` Phase 1.5
+does on your behalf. But a multi-repo feature that reached this skill must record a **pass**,
+not a skip.
+
 Then **stop** and hand back for review.
 
 ## Phase 6 — Write back to the brain

@@ -11,12 +11,18 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+AGENTS_TARGET="${CLAUDE_AGENTS_DIR:-$HOME/.claude/agents}"
 LOCK="$REPO/skills.lock.json"
 MODE="${1:-install}"
 
 # _recovered/ holds partially-recovered originals kept for provenance. They are
 # not runnable and must never be projected.
 files() { find "$REPO/skills" -type f ! -path '*/_recovered/*' ! -name '*.pyc' | sort; }
+# Agent definitions are flat files (agents/<name>.md), each carrying an
+# "eng-brain-managed" provenance line so the installer can tell its own copy from
+# a hand-written one and never clobber the latter.
+agent_files() { [ -d "$REPO/agents" ] && find "$REPO/agents" -type f -name '*.md' | sort || true; }
+MARKER="eng-brain-managed"
 hash_file() { shasum -a 256 "$1" | awk '{print $1}'; }
 
 case "$MODE" in
@@ -31,12 +37,12 @@ case "$MODE" in
         [ $first -eq 1 ] || echo ','
         first=0
         printf '    "%s": "%s"' "${f#$REPO/}" "$(hash_file "$f")"
-      done < <(files)
+      done < <(files; agent_files)
       echo
       echo '  }'
       echo '}'
     } > "$LOCK"
-    echo "wrote $LOCK ($(files | wc -l | tr -d ' ') files)"
+    echo "wrote $LOCK ($(( $(files | wc -l) + $(agent_files | wc -l) )) files)"
     ;;
 
   --check)
@@ -50,7 +56,16 @@ case "$MODE" in
         echo "DIFFERS  $rel"; fail=1
       fi
     done < <(files)
-    [ $fail -eq 0 ] && echo "in sync with $TARGET"
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      dest="$AGENTS_TARGET/$(basename "$f")"
+      if [ ! -f "$dest" ]; then
+        echo "MISSING  agents/$(basename "$f")"; fail=1
+      elif [ "$(hash_file "$f")" != "$(hash_file "$dest")" ]; then
+        echo "DIFFERS  agents/$(basename "$f")"; fail=1
+      fi
+    done < <(agent_files)
+    [ $fail -eq 0 ] && echo "in sync with $TARGET and $AGENTS_TARGET"
     exit $fail
     ;;
 
@@ -93,6 +108,29 @@ case "$MODE" in
     done
     echo "installed $n skills -> $TARGET"
     [ "$skipped" -gt 0 ] && echo "$skipped skipped (unmanaged) — see above" >&2
+
+    # Agents: flat files, guarded per-file by the provenance marker. A hand-written
+    # ~/.claude/agents/architect.md that is not ours is never overwritten.
+    an=0 askipped=0
+    if [ -n "$(agent_files)" ]; then
+      mkdir -p "$AGENTS_TARGET"
+      while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        base="$(basename "$f")"
+        adest="$AGENTS_TARGET/$base"
+        if [ -f "$adest" ] && ! grep -q "$MARKER" "$adest" 2>/dev/null; then
+          echo "SKIP agents/$base — exists and is not eng-brain-managed (no marker)" >&2
+          askipped=$((askipped + 1)); continue
+        fi
+        astaging="$AGENTS_TARGET/.$base.incoming.$$"
+        rm -f "$astaging"
+        cp "$f" "$astaging"
+        mv -f "$astaging" "$adest"
+        an=$((an + 1))
+      done < <(agent_files)
+      echo "installed $an agents -> $AGENTS_TARGET"
+      [ "$askipped" -gt 0 ] && echo "$askipped agent(s) skipped (unmanaged) — see above" >&2
+    fi
     echo "verify with: ./install.sh --check"
     ;;
 
