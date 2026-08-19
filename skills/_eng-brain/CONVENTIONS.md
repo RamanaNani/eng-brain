@@ -154,6 +154,11 @@ weak today. Do not add to that pile.
 - Never write a brain page without an edge (§5).
 - Never `gbrain sources remove` or `sources purge` from inside these skills.
 - Never claim tests pass without showing the runner output.
+- Never leave the primary checkout on a branch other than the one the run started on.
+  Feature work belongs in a worktree. If a skill must `git checkout` in the primary
+  checkout, it restores `$SOURCE_BRANCH` before reporting done — on the failure path too.
+  A dev server started from that checkout keeps serving whatever HEAD points at, so a
+  stranded HEAD silently tests the wrong code for as long as nobody thinks to look.
 
 ## 7. Run preamble
 
@@ -163,6 +168,25 @@ Every skill runs this first and reuses the values:
 set -o pipefail
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "not a git repo"; exit 1; }
 SOURCE_BRANCH=$(git branch --show-current)          # the PR target. Record it.
+
+# A dev server serves whatever the primary checkout's HEAD points at, and `--reload` makes
+# that silent: check out another branch and the server follows, with no restart and no log
+# line. You keep testing against a URL that is no longer running the code you think it is.
+# Comparing the server's branch to this run's branch cannot detect it — same checkout, same
+# answer, always equal. What IS decidable: did HEAD move AFTER the server was launched?
+# Verified 2026-08-19 against a uvicorn started Aug16 13:23 whose repo was checked out to a
+# feature branch Aug17 12:08 — the warn below is that run's real output.
+[ -n "$SOURCE_BRANCH" ] || { echo "BLOCKED: detached HEAD in $REPO_ROOT — checkout a branch first"; exit 1; }
+HEAD_MTIME=$(stat -f %m "$(git rev-parse --git-dir)/HEAD" 2>/dev/null || stat -c %Y "$(git rev-parse --git-dir)/HEAD" 2>/dev/null)
+for PID in $(lsof -a -d cwd +D "$REPO_ROOT" -Fp 2>/dev/null | sed -n 's/^p//p' | sort -u); do
+  CMD=$(ps -p "$PID" -o comm= 2>/dev/null); case "${CMD##*/}" in -*|*sh|claude|lsof) continue;; esac
+  PSTART=$(date -j -f "%a %b %e %T %Y" "$(ps -p "$PID" -o lstart= 2>/dev/null)" +%s 2>/dev/null) || continue
+  [ "${HEAD_MTIME:-0}" -gt "$PSTART" ] &&
+    echo "WARN: pid $PID (${CMD##*/}) launched $(date -r $PSTART '+%b%d %H:%M'), HEAD moved $(date -r $HEAD_MTIME '+%b%d %H:%M') — it now serves '$SOURCE_BRANCH', not the branch you started it on"
+done
+# The permanent fix is not discipline, it is a second checkout — see §6. Pin the dev server
+# to its own worktree and no agent's `git checkout` can ever reach it:
+#   git -C "$REPO_ROOT" worktree add ../<repo>-dev dev   # then run the server from there
 
 # FEATURE_SLUG is supplied by the CALLING SKILL, never by this block. `/arch` coins it
 # kebab-case from the ask (`FEATURE_SLUG=offline-sync`); `/slice`, `/fleet` and `/pr` reuse

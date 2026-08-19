@@ -70,10 +70,43 @@ Bare `gbrain init` picks for you: PGLite under 1000 `.md` files, Supabase at or 
 gbrain init --pglite
 ```
 
-No account, no keys, no network. Everything works except cross-machine sync. This is the
-honest starting point — you can move to Postgres later without redoing your work.
+No account, no keys, no network. This is the honest starting point — you can move to
+Postgres later without redoing your work.
+
+What you keep: pages, edges, tags, timeline, `think`, exact search, every stage gate.
+What you give up until you migrate:
+
+- **cross-machine sync** — the brain is one file on one laptop
+- **semantic recall** — no embedding key means no vector search, so `think` falls back to
+  exact matching. `--embedding-model` works here too if you want it before migrating.
+- **concurrent writers** — PGLite is embedded and single-process. Two agent sessions
+  writing at once is not a supported shape; Supabase is, which is the real reason the
+  1000-file auto-pick exists.
 
 Override the location with `--path <DIR>` if you don't want it in `~/.gbrain/`.
+
+**Moving off PGLite later** — a first-class command, not an export/re-import:
+
+```bash
+gbrain migrate --to supabase       # PGLite  → hosted Postgres
+gbrain migrate --to pglite         # and back, if you want local again
+gbrain doctor                      # confirm before you trust it
+```
+
+Embeddings move separately, because changing provider means recomputing every vector:
+
+```bash
+gbrain migrate embeddings --to <provider>:<model>
+```
+
+Check `gbrain config` for what you are on before you run that. A local ollama model
+(`ollama:nomic-embed-text`, 768 dims) needs no key and costs only wall time; a hosted
+model needs a key and bills per token. Switching also changes `embedding_dimensions`,
+which rewrites the vector column — so it is a re-embed of the whole corpus, not a
+setting flip. Confirm with `gbrain doctor` afterwards.
+
+Back up `~/.gbrain/brain.pglite` before migrating. It is one file — `cp` is the whole
+backup strategy, and it is the only copy you have.
 
 ### B. Supabase — the normal choice
 

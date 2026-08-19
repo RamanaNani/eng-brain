@@ -194,6 +194,30 @@ manifest.
 
 `integration/<feature>` stays local until `/pr`. Nothing is pushed and no PR is opened here.
 
+### Then remove the worktrees
+
+The harness auto-removes a worktree only if the agent left it *unchanged* — and a slice that
+built anything committed, so every worktree that did real work survives the wave. Once a
+slice is assembled its worktree holds nothing the refs don't: the commits are on `$BRANCH`
+and on `integration/$FEATURE_SLUG`. Remove it here, not at `/pr` — `/pr` runs only after a
+human merges, and never runs at all when the pipeline stops early, which is most of the time.
+
+```bash
+# Only worktrees whose slice assembled. A blocked slice keeps its worktree for inspection.
+for BRANCH in "${PASSED_BRANCHES[@]}"; do
+  WT=$(git -C "$REPO_ROOT" worktree list --porcelain \
+       | awk -v b="branch refs/heads/$BRANCH" '/^worktree /{p=substr($0,10)} $0==b{print p}')
+  [ -n "$WT" ] || continue
+  git -C "$REPO_ROOT" worktree remove "$WT" 2>/dev/null \
+    || echo "note: $WT has uncommitted changes — left in place; inspect before 'worktree remove --force'"
+done
+git -C "$REPO_ROOT" worktree prune     # drop admin entries whose dirs are already gone
+git -C "$REPO_ROOT" worktree list      # what remains; blocked slices are expected here
+```
+
+Never `--force` inside that loop. A worktree that refuses to go has uncommitted work in it,
+and that is a finding — a slice that wrote more than it committed — not an obstacle to clear.
+
 **Stop here.** Do not merge, do not push, do not open a PR.
 
 ## Phase 4 — Report and hand back
